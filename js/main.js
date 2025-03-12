@@ -1,6 +1,4 @@
-// Wait for DOM and dependencies to load
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if all required dependencies are loaded
     const checkDependencies = () => {
         if (typeof THREE === 'undefined') {
             console.error('Three.js not loaded');
@@ -17,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     };
 
-    // Wait a short moment to ensure all scripts are loaded
     setTimeout(() => {
         if (!checkDependencies()) {
             console.error('Some dependencies failed to load');
@@ -26,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         class RoomViewer {
             constructor() {
-                // Make sure scene-container exists
                 const container = document.getElementById('scene-container');
                 if (!container) {
                     console.error('Could not find scene-container');
@@ -35,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 console.log('Initializing RoomViewer');
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0xf0f0f0); // Light gray background
+                this.scene.background = new THREE.Color(0xc0e0ff); // Light blue background
                 this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 this.renderer = new THREE.WebGLRenderer({ antialias: true });
                 this.controls = null;
@@ -53,21 +49,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const container = document.getElementById('scene-container');
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 container.appendChild(this.renderer.domElement);
 
-                // Position camera for better view
-                this.camera.position.set(8, 8, 8);
+                this.camera.position.set(8, 5, 8);
                 this.camera.lookAt(0, 0, 0);
 
-                // Add window resize handler
                 window.addEventListener('resize', () => this.onWindowResize(), false);
             }
 
             createRoom() {
-                // Floor - make it lighter gray
+                // Floor
                 const floorGeometry = new THREE.PlaneGeometry(20, 20);
                 const floorMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0xaaaaaa, // Lighter gray
+                    color: 0x808080, // Darker gray
                     side: THREE.DoubleSide
                 });
                 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -75,9 +70,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 floor.receiveShadow = true;
                 this.scene.add(floor);
 
-                // Walls - make them white
+                // Walls
                 const wallMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0xffffff  // White
+                    color: 0xe0e0e0  // Light gray
                 });
                 
                 // Back wall
@@ -113,24 +108,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setupLights() {
-                // Brighter ambient light
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
                 this.scene.add(ambientLight);
 
                 // Main directional light
-                const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
-                mainLight.position.set(10, 10, 10);
+                const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                mainLight.position.set(5, 10, 5);
                 mainLight.castShadow = true;
+                mainLight.shadow.mapSize.width = 1024;
+                mainLight.shadow.mapSize.height = 1024;
+                mainLight.shadow.camera.near = 0.5;
+                mainLight.shadow.camera.far = 50;
                 this.scene.add(mainLight);
 
                 // Additional light for better visibility
-                const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
-                fillLight.position.set(-10, 5, -10);
+                const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                fillLight.position.set(-5, 5, -5);
                 this.scene.add(fillLight);
             }
 
             setupControls() {
-                // Updated OrbitControls initialization
                 this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
                 this.controls.dampingFactor = 0.05;
@@ -210,8 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Create instance
         console.log("Starting Room Viewer");
         new RoomViewer();
-    }, 100); // Small delay to ensure scripts are loaded
+    }, 100);
 });
