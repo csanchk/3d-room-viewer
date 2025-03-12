@@ -312,51 +312,62 @@ document.addEventListener('DOMContentLoaded', () => {
         constrainObjectToBounds(object) {
             // Get object's bounding box
             const bbox = new THREE.Box3().setFromObject(object);
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
-        
+            
             // Room dimensions
             const roomWidth = 20;
             const roomDepth = 20;
             const roomHeight = 10;
         
-            // Get the actual position of the object's bottom
+            // Get the object boundaries
             const bottomY = bbox.min.y;
-               const topY = bbox.max.y;
+            const topY = bbox.max.y;
             const leftX = bbox.min.x;
             const rightX = bbox.max.x;
             const frontZ = bbox.min.z;
             const backZ = bbox.max.z;
         
+            // Store original position
+            const originalPosition = object.position.clone();
+        
             // Constrain to floor (y = 0)
             if (bottomY < 0) {
-                object.position.y += Math.abs(bottomY);
+                object.position.y = object.position.y - bottomY;
             }
         
             // Constrain to ceiling
             if (topY > roomHeight) {
-                object.position.y -= (topY - roomHeight);
+                object.position.y = object.position.y - (topY - roomHeight);
             }
         
             // Constrain to walls
             // Left wall (x = -10)
             if (leftX < -10) {
-                object.position.x +x += Math.abs(leftX + 10);
-            }
-            // Right wall (x = 10)
-            if (rightX > 10) {
-                object.position.x -= (rightX - 10);
-            }
-            // Back wall (z = -10)
-            if (backZ > 10) {
-                object.position.z -= (backZ - 10);
-            }
-            // Front wall (z = -10)
-            if (frontZ < -10) {
-                object.position.z += Math.abs(frontZ + 10);
+                object.position.x = object.position.x - (leftX + 10);
             }
         
-            // Update transform controls
+            // Right wall (x = 10)
+            if (rightX > 10) {
+                object.position.x = object.position.x - (rightX - 10);
+            }
+        
+            // Back wall (z = -10)
+            if (backZ > 10) {
+                object.position.z = object.position.z - (backZ - 10);
+            }
+        
+            // Front wall (z = -10)
+            if (frontZ < -10) {
+                object.position.z = object.position.z + 10 + Math.abs(frontZ);
+            }
+        
+            // Log position changes if any occurred
+            if (!object.position.equals(originalPosition)) {
+                console.log('Position constrained:', 
+                    'from:', originalPosition, 
+                    'to:', object.position.clone());
+            }
+        
+            // Update transform controls if they exist
             if (this.transformControls) {
                 this.transformControls.update();
             }
