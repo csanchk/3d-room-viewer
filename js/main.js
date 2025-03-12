@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
-            
+               
             this.renderer.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
@@ -246,29 +246,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 raycaster.setFromCamera(mouse, this.camera);
         
-                const intersects = raycaster.intersectObjects(this.scene.children, true);
+                // Get all meshes from loaded objects
+                const objectMeshes = [];
+                this.objects.forEach(object => {
+                    console.log('Processing object:', object.name);
+                    object.traverse((child) => {
+                        if (child.isMesh) {
+                            child.userData.rootObject = object; // Store reference to root object
+                            objectMeshes.push(child);
+                            console.log('Added mesh to raycast targets');
+                        }
+                    });
+                });
+        
+                console.log('Total meshes to check:', objectMeshes.length);
+        
+                // Check intersections with meshes
+                const intersects = raycaster.intersectObjects(objectMeshes, false);
+                console.log('Intersections found:', intersects.length);
         
                 if (intersects.length > 0) {
-                    let selectedObject = intersects[0].object;
+                    const hitObject = intersects[0].object;
+                    const rootObject = hitObject.userData.rootObject;
                     
-                    // Traverse up to find the root object
-                    while (selectedObject.parent && selectedObject.parent !== this.scene) {
-                        selectedObject = selectedObject.parent;
-                    }
-                    
-                    if (this.objects.has(selectedObject.name)) {
-                        console.log('Selected object:', selectedObject.name);
-                        this.selectObject(selectedObject);
+                    if (rootObject)ct) {
+                        console.log('Selected root object:', rootObject.name);
+                        this.selectObject(rootObject);
                     } else {
-                        console.log('Hit non-selectable object, deselecting');
-                        this.deselectObject();
+                        console.log('No root object found');
                     }
                 } else {
-                    console.log('No hit, deselecting');
-                    this.deselectObject();
+                    // Check if we hit the room
+                    const roomParts = [this.floor, ...this.scene.children.filter(child => 
+                        child.isMesh && !this.objects.has(child.name))];
+                    
+                    const roomIntersects = raycaster.intersectObjects(roomParts, false);
+                    
+                    if (roomIntersects.length > 0) {
+                        console.log('Hit room, deselecting');
+                        this.deselectObject();
+                    }
                 }
             });
-        }        
+        }
+        
+        selectObject(object) {
+            console.log('Selecting object:', object.name);
+            
+            if (!object) {
+                console.error('Attempted to select null object');
+                return;
+            }
+        
+            this.selectedObject = object;
+            
+            // Ensure the object has a modelUrl
+            if (!object.userData.modelUrl) {
+                object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
+            }
+            
+            // Ensure transform controls attach to object's center
+            try {
+                this.transformControls.attach(object);
+                this.transformControls.setMode(this.transformMode);
+                console.log('Transform controls attached');
+            } catch (error) {
+                console.error('Error attaching transform controls:', error);
+            }
+            
+            // Ensure object is within bounds when selected
+            this.constrainObjectToBounds(object);
+            
+            this.updateObjectList();
+        
+            const listItems = document.querySelectorAll('.object-item');
+            listItems.forEach(item => item.classList.remove('selected'));
+            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+            if (listItem) {
+                listItem.classList.add('selected');
+            }
+        
+            // Save scene state after selection
+            this.saveSceneState();
+            
+            console.log('Selection complete');
+        }
+              
         
         
         handleFileUpload(event) {
@@ -291,11 +354,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (child.isMesh) {
                             child.castShadow = true;
                             child.receiveShadow = true;
+                            child.userData.selectable = true; // Mark as selectable
                         }
                     });
                     
                     model.name = objectId;
                     model.userData.modelUrl = url;
+                    model.userData.selectable = true; // Mark root as selectable
         
                     // Calculate bounding box
                     const bbox = new THREE.Box3().setFromObject(model);
@@ -312,6 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.scene.add(model);
                     this.objects.set(objectId, model);
                     
+                    console.log('Model added to scene:', objectId);
+                    
                     // Select the model
                     this.selectObject(model);
                     this.updateObjectList();
@@ -327,7 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     URL.revokeObjectURL(url);
                 }
             );
-        }        
+        }
+         
         
 
         centerObject(object) {
