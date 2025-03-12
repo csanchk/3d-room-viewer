@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         class RoomViewer {
             constructor() {
-                const container = document.getElementById('scene-container');
+                const container = document.querySelector('#scene-container');
                 if (!container) {
                     console.error('Could not find scene-container');
                     return;
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             init() {
-                const container = document.getElementById('scene-container');
+                const container = document.querySelector('#scene-container');
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.shadowMap.enabled = true;
                 this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
