@@ -255,14 +255,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     const objectId = 'object_' + Date.now();
                     model.name = objectId;
 
-                    // Position object at a safe starting position
-                    model.position.set(0, 0, 0);
-                    this.scene.add(model);
-                    
-                    // Ensure initial position is valid
-                    this.constrainObjectToBounds(model);
+                    // Calculate safe starting position
+                    const bbox = new THREE.Box3().setFromObject(model);
+                    const size = new THREE.Vector3();
+                    bbox.getSize(size);
 
+                    // Position object in center of room, slightly above floor
+                    model.position.set(
+                        0,  // Center X
+                        size.y / 2,  // Half height above floor
+                        0   // Center Z
+                    );
+
+                    this.scene.add(model);
                     this.objects.set(objectId, model);
+                    
+                    // Automatically select the new object
                     this.selectObject(model);
                     this.updateObjectList();
                     
@@ -276,23 +284,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             );
         }
+
         constrainObjectToBounds(object) {
-            // Get object's bounding box
+            // Get object's bounding box with some padding
+            const padding = 0.1; // Add 10cm padding
             const bbox = new THREE.Box3().setFromObject(object);
             const size = new THREE.Vector3();
             bbox.getSize(size);
 
-            // Room dimensions (matching your room setup)
-            const roomWidth = 20;  // Total width of room
-            const roomDepth = 20;  // Total depth of room
-            const roomHeight = 10; // Height of walls
+            // Room dimensions
+            const roomWidth = 19;  // Slightly less than actual room size (20)
+            const roomDepth = 19;  // Slightly less than actual room size (20)
+            const roomHeight = 9.5; // Slightly less than actual wall height (10)
 
-            // Calculate object dimensions
-            const objectWidth = size.x;
-            const objectDepth = size.z;
-            const objectHeight = size.y;
+            // Calculate object dimensions with padding
+            const objectWidth = size.x + padding;
+            const objectDepth = size.z + padding;
+            const objectHeight = size.y + padding;
 
-            // Constrain position
+            // Calculate bounds with stricter constraints
             const minX = -roomWidth/2 + objectWidth/2;
             const maxX = roomWidth/2 - objectWidth/2;
             const minZ = -roomDepth/2 + objectDepth/2;
@@ -300,13 +310,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const minY = objectHeight/2; // Keep object on or above floor
             const maxY = roomHeight - objectHeight/2;
 
+            // Store previous position
+            const prevPosition = object.position.clone();
+
             // Clamp position within bounds
             object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
             object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
             object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
 
-            // Update transform controls position
-            this.transformControls.update();
+            // If position was changed, log it
+            if (!object.position.equals(prevPosition)) {
+                console.log('Object constrained from:', prevPosition, 'to:', object.position.clone());
+            }
+
+            // Update transform controls
+            if (this.transformControls) {
+                this.transformControls.update();
+            }
         }
 
         centerObject(object) {
