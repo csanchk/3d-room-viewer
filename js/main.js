@@ -85,6 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
             this.transformControls.addEventListener('dragging-changed', (event) => {
                 this.orbitControls.enabled = !event.value;
             });
+
+            // Add listener for transform controls changes
+            this.transformControls.addEventListener('objectChange', () => {
+                if (this.selectedObject) {
+                    this.constrainObjectToBounds(this.selectedObject);
+                }
+            });
         }
 
         createRoom() {
@@ -161,55 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('lockObject')?.addEventListener('click', () => this.lockSelectedObject());
             document.getElementById('deleteObject')?.addEventListener('click', () => this.deleteSelectedObject());
             
-            // File upload - Fixed binding
+            // File upload
             const uploadElement = document.getElementById('modelUpload');
             if (uploadElement) {
                 uploadElement.addEventListener('change', (e) => this.handleFileUpload(e));
             }
         }
 
-        handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-        
-            console.log('Loading file:', file.name);
-        
-            const loader = new THREE.GLTFLoader();
-            const url = URL.createObjectURL(file);
-        
-            loader.load(url, 
-                // Success callback
-                (gltf) => {
-                    console.log('Model loaded successfully');
-                    const model = gltf.scene;
-                    model.traverse((child) => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                    
-                    const objectId = 'object_' + Date.now();
-                    model.name = objectId;
-                    model.position.set(0, 0, 0);
-                    this.scene.add(model);
-                    this.objects.set(objectId, model);
-                    this.selectObject(model);
-                    this.updateObjectList();
-                    
-                    URL.revokeObjectURL(url);
-                },
-                // Progress callback
-                (progress) => {
-                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-                },
-                // Error callback
-                (error) => {
-                    console.error('Error loading model:', error);
-                }
-            );
-        }
-        
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
@@ -223,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 
                 raycaster.setFromCamera(mouse, this.camera);
-        
+
                 // Get all meshes from loaded objects
                 const objectMeshes = [];
                 this.objects.forEach(object => {
@@ -235,10 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 });
-        
+
                 // First, check intersections with objects only
                 const objectIntersects = raycaster.intersectObjects(objectMeshes, false);
-        
+
                 if (objectIntersects.length > 0) {
                     // Get the parent object of the intersected mesh
                     const selectedObject = objectIntersects[0].object.userData.parentObject;
@@ -249,66 +214,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         return; // Exit early if we hit an object
                     }
                 }
-        
+
                 // If we didn't hit any objects, check for room intersections
                 const roomParts = [this.floor, ...this.scene.children.filter(child => 
                     child.isMesh && !this.objects.has(child.name))];
                 
                 const roomIntersects = raycaster.intersectObjects(roomParts, false);
-        
+
                 if (roomIntersects.length > 0) {
                     console.log('Hit room, deselecting');
                     this.deselectObject();
                 }
             });
-            this.transformControls.addEventListener('objectChange', () => {
-                if (this.selectedObject) {
-                    this.constrainObjectToBounds(this.selectedObject);
-                }
-            });
         }
-        constrainObjectToBounds(object) {
-            // Get object's bounding box
-            const bbox = new THREE.Box3().setFromObject(object);
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
-    
-            // Room dimensions (matching your room setup)
-            const roomWidth = 20;  // Total width of room
-            const roomDepth = 20;  // Total depth of room
-            const roomHeight = 10; // Height of walls
-    
-            // Calculate object dimensions
-            const objectWidth = size.x;
-            const objectDepth = size.z;
-            const objectHeight = size.y;
-    
-            // Constrain position
-            const minX = -roomWidth/2 + objectWidth/2;
-            const maxX = roomWidth/2 - objectWidth/2;
-            const minZ = -roomDepth/2 + objectDepth/2;
-            const maxZ = roomDepth/2 - objectDepth/2;
-            const minY = objectHeight/2; // Keep object on or above floor
-            const maxY = roomHeight - objectHeight/2;
-    
-            // Clamp position within bounds
-            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
-            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
-            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
-    
-            // Update transform controls position
-            this.transformControls.update();
-        }
-    
+
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-    
+
             console.log('Loading file:', file.name);
-    
+
             const loader = new THREE.GLTFLoader();
             const url = URL.createObjectURL(file);
-    
+
             loader.load(url, 
                 (gltf) => {
                     console.log('Model loaded successfully');
@@ -316,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Center the model's pivot point
                     this.centerObject(model);
-    
+
                     model.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
@@ -326,14 +254,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const objectId = 'object_' + Date.now();
                     model.name = objectId;
-    
+
                     // Position object at a safe starting position
                     model.position.set(0, 0, 0);
                     this.scene.add(model);
                     
                     // Ensure initial position is valid
                     this.constrainObjectToBounds(model);
-    
+
                     this.objects.set(objectId, model);
                     this.selectObject(model);
                     this.updateObjectList();
@@ -348,7 +276,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             );
         }
-    
+        constrainObjectToBounds(object) {
+            // Get object's bounding box
+            const bbox = new THREE.Box3().setFromObject(object);
+            const size = new THREE.Vector3();
+            bbox.getSize(size);
+
+            // Room dimensions (matching your room setup)
+            const roomWidth = 20;  // Total width of room
+            const roomDepth = 20;  // Total depth of room
+            const roomHeight = 10; // Height of walls
+
+            // Calculate object dimensions
+            const objectWidth = size.x;
+            const objectDepth = size.z;
+            const objectHeight = size.y;
+
+            // Constrain position
+            const minX = -roomWidth/2 + objectWidth/2;
+            const maxX = roomWidth/2 - objectWidth/2;
+            const minZ = -roomDepth/2 + objectDepth/2;
+            const maxZ = roomDepth/2 - objectDepth/2;
+            const minY = objectHeight/2; // Keep object on or above floor
+            const maxY = roomHeight - objectHeight/2;
+
+            // Clamp position within bounds
+            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
+            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
+            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
+
+            // Update transform controls position
+            this.transformControls.update();
+        }
+
         centerObject(object) {
             // Center the object's geometry
             const bbox = new THREE.Box3().setFromObject(object);
@@ -361,8 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 child.position.add(center);
             });
         }
-    
-        // Update selectObject to include boundary checking
+
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
@@ -374,54 +333,16 @@ document.addEventListener('DOMContentLoaded', () => {
             this.constrainObjectToBounds(object);
             
             this.updateObjectList();
-    
+
             const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
         }
-    }
-        
-        selectObject(object) {
-            console.log('Selecting object:', object.name);
-            
-            // Always update selection
-            this.selectedObject = object;
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
-            this.updateObjectList();
-        
-            // Optional: Make the selected object slightly transparent to help with manipulation
-            object.traverse((child) => {
-                if (child.isMesh && child.material) {
-                    if (!child.material.originalOpacity) {
-                        child.material.originalOpacity = child.material.opacity || 1;
-                    }
-                    child.material.transparent = true;
-                    child.material.opacity = 0.8; // Make it slightly transparent when selected
-                }
-            });
-        
-            // Update UI
-            const listItems = document.querySelectorAll('.object-item');
-            listItems.forEach(item => item.classList.remove('selected'));
-            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) listItem.classList.add('selected');
-        }
-        
+
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
-                // Restore original opacity
-                this.selectedObject.traverse((child) => {
-                    if (child.isMesh && child.material) {
-                        if (child.material.originalOpacity) {
-                            child.material.opacity = child.material.originalOpacity;
-                            child.material.transparent = child.material.opacity < 1;
-                        }
-                    }
-                });
-        
                 this.transformControls.detach();
                 this.selectedObject = null;
                 this.updateObjectList();
@@ -430,9 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 listItems.forEach(item => item.classList.remove('selected'));
             }
         }
-        
-        
-        
+
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
@@ -451,7 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lockSelectedObject() {
             if (this.selectedObject) {
                 this.transformControls.detach();
-                // You could store the locked state in the object if needed
                 this.deselectObject();
             }
         }
