@@ -292,17 +292,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const bbox = new THREE.Box3().setFromObject(object);
             const size = new THREE.Vector3();
             bbox.getSize(size);
-
+        
             // Room dimensions
             const roomWidth = 19;  // Slightly less than actual room size (20)
             const roomDepth = 19;  // Slightly less than actual room size (20)
             const roomHeight = 9.5; // Slightly less than actual wall height (10)
-
+        
             // Calculate object dimensions with padding
             const objectWidth = size.x + padding;
             const objectDepth = size.z + padding;
             const objectHeight = size.y + padding;
-
+        
             // Calculate bounds with stricter constraints
             const minX = -roomWidth/2 + objectWidth/2;
             const maxX = roomWidth/2 - objectWidth/2;
@@ -310,25 +310,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxZ = roomDepth/2 - objectDepth/2;
             const minY = objectHeight/2; // Keep object on or above floor
             const maxY = roomHeight - objectHeight/2;
-
+        
             // Store previous position
             const prevPosition = object.position.clone();
-
+        
             // Clamp position within bounds
             object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
             object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
             object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
-
+        
             // If position was changed, log it
             if (!object.position.equals(prevPosition)) {
                 console.log('Object constrained from:', prevPosition, 'to:', object.position.clone());
             }
-
+        
             // Update transform controls
             if (this.transformControls) {
                 this.transformControls.update();
             }
-        }
+        }        
 
         centerObject(object) {
             // Get the bounding box of the entire object
@@ -372,19 +372,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Ensure transform controls attach to object's center
             this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
+            this.setTransformMode(this.transformMode); // This will set up the controls correctly
             
             // Ensure object is within bounds when selected
             this.constrainObjectToBounds(object);
             
             this.updateObjectList();
-
+        
             const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
         }
-
+        
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
@@ -401,6 +401,20 @@ document.addEventListener('DOMContentLoaded', () => {
             this.transformMode = mode;
             if (this.selectedObject) {
                 this.transformControls.setMode(mode);
+                
+                // Set the space for rotation and scale
+                if (mode === 'rotate' || mode === 'scale') {
+                    this.transformControls.setSpace('local');
+                } else {
+                    this.transformControls.setSpace('world');
+                }
+                
+                // Show all axes for rotation
+                if (mode === 'rotate') {
+                    this.transformControls.showX = true;
+                    this.transformControls.showY = true;
+                    this.transformControls.showZ = true;
+                }
             }
             
             // Update UI
@@ -411,6 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
 
         lockSelectedObject() {
             if (this.selectedObject) {
