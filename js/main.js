@@ -31,21 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.selectedObject = null;
             this.transformMode = 'translate'; // 'translate', 'rotate', or 'scale'
             this.animate();
-
-            // Add keyboard shortcuts
-            window.addEventListener('keydown', (event) => {
-                switch(event.key.toLowerCase()) {
-                    case 'g':
-                        this.setTransformMode('translate');
-                        break;
-                    case 'r':
-                        this.setTransformMode('rotate');
-                        break;
-                    case 's':
-                        this.setTransformMode('scale');
-                        break;
-                }
-            });
         }
 
         init() {
@@ -71,30 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(this.renderer.domElement);
         }
-        
         setupScene() {
             // Orbit controls
             this.orbitControls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
             this.orbitControls.enableDamping = true;
             this.orbitControls.dampingFactor = 0.05;
-        
+
             // Transform controls
             this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-            
-            // Configure transform controls
-            this.transformControls.setSize(1); // Make controls easier to see
-            this.transformControls.showX = true;
-            this.transformControls.showY = true;
-            this.transformControls.showZ = true;
-            
             this.scene.add(this.transformControls);
-        
+
             // Transform controls events
             this.transformControls.addEventListener('dragging-changed', (event) => {
                 this.orbitControls.enabled = !event.value;
             });
-        
-            this.transformControls.addEventListener('change', () => {
+
+            // Add listener for transform controls changes
+            this.transformControls.addEventListener('objectChange', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
                 }
@@ -185,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
-            this.renderer.domElement.addEventListener('click', (event) => {
+            this.renderer.dr.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
@@ -234,21 +212,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-        
+
             console.log('Loading file:', file.name);
-        
+
             const loader = new THREE.GLTFLoader();
             const url = URL.createObjectURL(file);
-        
+
             loader.load(url, 
                 (gltf) => {
                     console.log('Model loaded successfully');
                     const model = gltf.scene;
-        
+
                     // Set up model properties before centering
                     model.traverse((child) => {
                         if (child.isMesh) {
@@ -259,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const objectId = 'object_' + Date.now();
                     model.name = objectId;
-        
+
                     // Center and process the model
                     const centeredModel = this.centerObject(model);
                     
@@ -267,14 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bbox = new THREE.Box3().setFromObject(centeredModel);
                     const size = new THREE.Vector3();
                     bbox.getSize(size);
-        
+
                     // Position model in center of room, directly on floor
                     centeredModel.position.set(
                         0,      // Center X
                         0,      // On floor
-                        0       // Center Z
+                        0          // Center Z
                     );
-        
+
                     // Add to scene and store reference
                     this.objects.set(objectId, centeredModel);
                     
@@ -291,51 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error loading model:', error);
                 }
             );
-        }        
-
-        constrainObjectToBounds(object) {
-            // Get object's bounding box with some padding
-            const padding = 0.1; // Add 10cm padding
-            const bbox = new THREE.Box3().setFromObject(object);
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
-        
-            // Room dimensions
-            const roomWidth = 19;  // Slightly less than actual room size (20)
-            const roomDepth = 19;  // Slightly less than actual room size (20)
-            const roomHeight = 9.5; // Slightly less than actual wall height (10)
-        
-            // Calculate object dimensions with padding
-            const objectWidth = size.x + padding;
-            const objectDepth = size.z + padding;
-            const objectHeight = size.y + padding;
-        
-            // Calculate bounds with stricter constraints
-            const minX = -roomWidth/2 + objectWidth/2;
-            const maxX = roomWidth/2 - objectWidth/2;
-            const minZ = -roomDepth/2 + objectDepth/2;
-            const maxZ = roomDepth/2 - objectDepth/2;
-            const minY = objectHeight/2; // Keep object on or above floor
-            const maxY = roomHeight - objectHeight/2;
-        
-            // Store previous position
-            const prevPosition = object.position.clone();
-        
-            // Clamp position within bounds
-            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
-            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
-            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
-        
-            // If position was changed, log it
-            if (!object.position.equals(prevPosition)) {
-                console.log('Object constrained from:', prevPosition, 'to:', object.position.clone());
-            }
-        
-            // Update transform controls
-            if (this.transformControls) {
-                this.transformControls.update();
-            }
-        }        
+        }
 
         centerObject(object) {
             // Get the bounding box of the entire object
@@ -367,10 +300,52 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Remove the original object
             object.parent?.remove(object);
-               
+            
             return container;
         }
+        constrainObjectToBounds(object) {
+            // Get object's bounding box with some padding
+            const padding = 0.1; // Add 10cm padding
+            const bbox = new THREE.Box3().setFromObject(object);
+            const size = new THREE.Vector3();
+            bbox.getSize(size);
 
+            // Room dimensions
+            const roomWidth = 19;  // Slightly less than actual room size (20)
+            const roomDepth = 19;  // Slightly less than actual room size (20)
+            const roomHeight = 9.5; // Slightly less than actual wall height (10)
+
+            // Calculate object dimensions with padding
+            const objectWidth = size.x + padding;
+            const objectDepth = size.z + padding;
+            const objectHeight = size.y + padding;
+
+            // Calculate bounds with stricter constraints
+            const minX = -roomWidth/2 + objectWidth/2;
+            const maxX = roomWidth/2 - objectWidth/2;
+            const minZ = -roomDepth/2 + objectDepth/2;
+            const maxZ = roomDepth/2 - objectDepth/2;
+            const minY = objectHeight/2; // Keep object on or above floor
+            const maxY = roomHeight - objectHeight/2;
+
+            // Store previous position
+            const prevPosition = object.position.clone();
+
+            // Clamp position within bounds
+            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
+            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
+            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
+
+            // If position was changed, log it
+            if (!object.position.equals(prevPosition)) {
+                console.log('Object constrained from:', prevPosition, 'to:', object.position.clone());
+            }
+
+            // Update transform controls
+            if (this.transformControls) {
+                this.transformControls.update();
+            }
+        }
 
         selectObject(object) {
             console.log('Selecting object:', object.name);
@@ -379,19 +354,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Ensure transform controls attach to object's center
             this.transformControls.attach(object);
-            this.setTransformMode(this.transformMode); // This will set up the controls correctly
+            this.transformControls.setMode(this.transformMode);
             
             // Ensure object is within bounds when selected
             this.constrainObjectToBounds(object);
             
             this.updateObjectList();
-        
+
             const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
         }
-        
+
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
@@ -405,40 +380,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setTransformMode(mode) {
-            console.log('Setting transform mode:', mode); // Debug log
             this.transformMode = mode;
-            
-            if (this.selectedObject && this.transformControls) {
-                // Detach and reattach the controls to force a refresh
-                const object = this.selectedObject;
-                this.transformControls.detach();
+            if (this.selectedObject) {
                 this.transformControls.setMode(mode);
-                
-                // Configure the controls based on mode
-                switch(mode) {
-                    case 'translate':
-                        this.transformControls.showX = true;
-                        this.transformControls.showY = true;
-                        this.transformControls.showZ = true;
-                        this.transformControls.setSpace('world');
-                        break;
-                    case 'rotate':
-                        this.transformControls.showX = true;
-                        this.transformControls.showY = true;
-                        this.transformControls.showZ = true;
-                        this.transformControls.setSpace('local');
-                        break;
-                    case 'scale':
-                        this.transformControls.showX = true;
-                        this.transformControls.showY = true;
-                        this.transformControls.showZ = true;
-                        this.transformControls.setSpace('local');
-                        break;
-                }
-                
-                // Reattach the controls
-                this.transformControls.attach(object);
-                console.log('Transform controls mode set to:', this.transformControls.getMode()); // Debug log
             }
             
             // Update UI
@@ -449,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        
+
         lockSelectedObject() {
             if (this.selectedObject) {
                 this.transformControls.detach();
