@@ -246,44 +246,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 raycaster.setFromCamera(mouse, this.camera);
         
-                // Get all meshes from loaded objects
-                const objectMeshes = [];
-                this.objects.forEach(object => {
-                    object.traverse((child) => {
-                        if (child.isMesh) {
-                            // Store reference to parent object
-                            child.userData.parentObject = object;
-                            objectMeshes.push(child);
-                        }
-                    });
-                });
+                const intersects = raycaster.intersectObjects(this.scene.children, true);
         
-                // First, check intersections with objects only
-                const objectIntersects = raycaster.intersectObjects(objectMeshes, false);
-        
-                if (objectIntersects.length > 0) {
-                    // Get the parent object of the intersected mesh
-                    const selectedObject = objectIntersects[0].object.userData.parentObject;
+                if (intersects.length > 0) {
+                    let selectedObject = intersects[0].object;
                     
-                    if (selectedObject && this.objects.has(selectedObject.name)) {
+                    // Traverse up to find the root object
+                    while (selectedObject.parent && selectedObject.parent !== this.scene) {
+                        selectedObject = selectedObject.parent;
+                    }
+                    
+                    if (this.objects.has(selectedObject.name)) {
                         console.log('Selected object:', selectedObject.name);
                         this.selectObject(selectedObject);
-                        return; // Exit early if we hit an object
+                    } else {
+                        console.log('Hit non-selectable object, deselecting');
+                        this.deselectObject();
                     }
-                }
-        
-                // If we didn't hit any objects, check for room intersections
-                const roomParts = [this.floor, ...this.scene.children.filter(child => 
-                    child.isMesh && !this.objects.has(child.name))];
-                
-                const roomIntersects = raycaster.intersectObjects(roomParts, false);
-        
-                if (roomIntersects.length > 0) {
-                    console.log('Hit room, deselecting');
+                } else {
+                    console.log('No hit, deselecting');
                     this.deselectObject();
                 }
             });
-        }
+        }        
         
         
         handleFileUpload(event) {
@@ -301,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('Model loaded successfully');
                     const model = gltf.scene;
         
-                    // Set up model properties before centering
+                    // Set up model properties
                     model.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
@@ -310,31 +295,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     
                     model.name = objectId;
-                    model.userData.modelUrl = url; // Store the URL with the object
+                    model.userData.modelUrl = url;
         
-                    // Center and process the model
-                    const centeredModel = this.centerObject(model);
-                    
-                    // Calculate initial position
-                    const bbox = new THREE.Box3().setFromObject(centeredModel);
+                    // Calculate bounding box
+                    const bbox = new THREE.Box3().setFromObject(model);
                     const size = new THREE.Vector3();
                     bbox.getSize(size);
                     
                     // Calculate height from bottom of bounding box
-                    const height = (bbox.max.y - bbox.min.y) / 2;
+                    const height = size.y / 2;
         
                     // Position model in center of room, with bottom exactly on floor
-                    centeredModel.position.set(
-                        0,          // Center X
-                        height,     // Height above floor based on object size
-                        0          // Center Z
-                    );
+                    model.position.set(0, height, 0);
         
                     // Add to scene and store reference
-                    this.objects.set(objectId, centeredModel);
+                    this.scene.add(model);
+                    this.objects.set(objectId, model);
                     
-                    // Select the centered model
-                    this.selectObject(centeredModel);
+                    // Select the model
+                    this.selectObject(model);
                     this.updateObjectList();
                     
                     // Save scene state after adding new object
@@ -348,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     URL.revokeObjectURL(url);
                 }
             );
-        }
+        }        
         
 
         centerObject(object) {
@@ -480,16 +459,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         selectObject(object) {
-            // ... existing code ...
+            console.log('Selecting object:', object.name);
+            
+            this.selectedObject = object;
             
             // Ensure the object has a modelUrl
             if (!object.userData.modelUrl) {
                 object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
             }
             
-            // ... rest of the existing code ...
+            // Ensure transform controls attach to object's center
+            this.transformControls.attach(object);
+            this.transformControls.setMode(this.transformMode);
+            
+            // Ensure object is within bounds when selected
+            this.constrainObjectToBounds(object);
+            
+            this.updateObjectList();
+        
+            const listItems = document.querySelectorAll('.object-item');
+            listItems.forEach(item => item.classList.remove('selected'));
+            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+            if (listItem) listItem.classList.add('selected');
+        
+            // Save scene state after selection
+            this.saveSceneState();
         }
-          
+        
 
         lockSelectedObject() {
             if (this.selectedObject) {
