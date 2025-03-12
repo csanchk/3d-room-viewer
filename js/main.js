@@ -361,25 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        selectObject(object) {
-            console.log('Selecting object:', object.name);
-            
-            this.selectedObject = object;
-            
-            // Ensure transform controls attach to object's center
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
-            
-            // Ensure object is within bounds when selected
-            this.constrainObjectToBounds(object);
-            
-            this.updateObjectList();
-
-            const listItems = document.querySelectorAll('.object-item');
-            listItems.forEach(item => item.classList.remove('selected'));
-            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) listItem.classList.add('selected');
-        }
 
         deselectObject() {
             console.log('Deselecting object');
@@ -396,18 +377,31 @@ document.addEventListener('DOMContentLoaded', () => {
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
-                // Detach and reattach to refresh the controls
-                const object = this.selectedObject;
+                // Get the center of the object
+                const bbox = new THREE.Box3().setFromObject(this.selectedObject);
+                const center = bbox.getCenter(new THREE.Vector3());
+                
                 this.transformControls.detach();
                 this.transformControls.setMode(mode);
                 
-                // Configure axes based on mode
+                // Configure transform controls
+                this.transformControls.setSize(0.7);
+                this.transformControls.showX = true;
+                this.transformControls.showY = true;
+                this.transformControls.showZ = true;
+                
+                // Set position to object's center
+                this.transformControls.position.copy(center);
+                
+                // Attach the object
+                this.transformControls.attach(this.selectedObject);
+                
+                // Ensure controls are visible but not duplicated
+                this.transformControls.visible = true;
                 if (this.transformControls.children[0]) {
+                    this.transformControls.children[0].visible = true;
                     this.transformControls.children[0].showNegativeAxes = false;
                 }
-        
-                // Reattach with updated configuration
-                this.transformControls.attach(object);
             }
             
             // Update UI
@@ -417,7 +411,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     button.classList.toggle('active', buttonId.includes(mode));
                 }
             });
-        }       
+        }
+        
+        // Also update the selectObject method
+        selectObject(object) {
+            console.log('Selecting object:', object.name);
+            
+            this.selectedObject = object;
+            
+            // Get the center of the object
+            const bbox = new THREE.Box3().setFromObject(object);
+            const center = bbox.getCenter(new THREE.Vector3());
+            
+            // Configure and position transform controls
+            this.transformControls.setSize(0.7);
+            this.transformControls.position.copy(center);
+            this.transformControls.attach(object);
+            this.transformControls.setMode(this.transformMode);
+            
+            // Ensure controls are visible but not duplicated
+            this.transformControls.visible = true;
+            if (this.transformControls.children[0]) {
+                this.transformControls.children[0].visible = true;
+                this.transformControls.children[0].showNegativeAxes = false;
+            }
+            
+            // Ensure object is within bounds when selected
+            this.constrainObjectToBounds(object);
+            
+            this.updateObjectList();
+        
+            const listItems = document.querySelectorAll('.object-item');
+            listItems.forEach(item => item.classList.remove('selected'));
+            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+            if (listItem) listItem.classList.add('selected');
+        }             
 
         lockSelectedObject() {
             if (this.selectedObject) {
