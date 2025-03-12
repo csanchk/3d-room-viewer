@@ -71,23 +71,30 @@ document.addEventListener('DOMContentLoaded', () => {
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(this.renderer.domElement);
         }
+        
         setupScene() {
             // Orbit controls
             this.orbitControls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
             this.orbitControls.enableDamping = true;
             this.orbitControls.dampingFactor = 0.05;
-
+        
             // Transform controls
             this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+            
+            // Configure transform controls
+            this.transformControls.setSize(1); // Make controls easier to see
+            this.transformControls.showX = true;
+            this.transformControls.showY = true;
+            this.transformControls.showZ = true;
+            
             this.scene.add(this.transformControls);
-
+        
             // Transform controls events
             this.transformControls.addEventListener('dragging-changed', (event) => {
                 this.orbitControls.enabled = !event.value;
             });
-
-            // Add listener for transform controls changes
-            this.transformControls.addEventListener('objectChange', () => {
+        
+            this.transformControls.addEventListener('change', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
                 }
@@ -398,23 +405,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setTransformMode(mode) {
+            console.log('Setting transform mode:', mode); // Debug log
             this.transformMode = mode;
-            if (this.selectedObject) {
+            
+            if (this.selectedObject && this.transformControls) {
+                // Detach and reattach the controls to force a refresh
+                const object = this.selectedObject;
+                this.transformControls.detach();
                 this.transformControls.setMode(mode);
                 
-                // Set the space for rotation and scale
-                if (mode === 'rotate' || mode === 'scale') {
-                    this.transformControls.setSpace('local');
-                } else {
-                    this.transformControls.setSpace('world');
+                // Configure the controls based on mode
+                switch(mode) {
+                    case 'translate':
+                        this.transformControls.showX = true;
+                        this.transformControls.showY = true;
+                        this.transformControls.showZ = true;
+                        this.transformControls.setSpace('world');
+                        break;
+                    case 'rotate':
+                        this.transformControls.showX = true;
+                        this.transformControls.showY = true;
+                        this.transformControls.showZ = true;
+                        this.transformControls.setSpace('local');
+                        break;
+                    case 'scale':
+                        this.transformControls.showX = true;
+                        this.transformControls.showY = true;
+                        this.transformControls.showZ = true;
+                        this.transformControls.setSpace('local');
+                        break;
                 }
                 
-                // Show all axes for rotation
-                if (mode === 'rotate') {
-                    this.transformControls.showX = true;
-                    this.transformControls.showY = true;
-                    this.transformControls.showZ = true;
-                }
+                // Reattach the controls
+                this.transformControls.attach(object);
+                console.log('Transform controls mode set to:', this.transformControls.getMode()); // Debug log
             }
             
             // Update UI
@@ -426,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-
         lockSelectedObject() {
             if (this.selectedObject) {
                 this.transformControls.detach();
