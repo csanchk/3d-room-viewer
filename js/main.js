@@ -319,12 +319,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bbox = new THREE.Box3().setFromObject(centeredModel);
                     const size = new THREE.Vector3();
                     bbox.getSize(size);
+                    
+                    // Calculate height from bottom of bounding box
+                    const height = (bbox.max.y - bbox.min.y) / 2;
         
-                    // Position model in center of room, directly on floor
+                    // Position model in center of room, with bottom exactly on floor
                     centeredModel.position.set(
-                        0,      // Center X
-                        0,      // On floor
-                        0       // Center Z
+                        0,          // Center X
+                        height,     // Height above floor based on object size
+                        0          // Center Z
                     );
         
                     // Add to scene and store reference
