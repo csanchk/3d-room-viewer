@@ -72,12 +72,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.orbitControls.enabled = !event.value;
             });
         
-            this.transformControls.addEventListener('objectChangange', () => {
+            // Add real-time constraint checking during transform
+            this.transformControls.addEventListener('change', () => {
+                if (this.selectedObject) {
+                    // Store current position
+                    const currentPos = this.selectedObject.position.clone();
+                    
+                    // Apply constraints
+                    this.constrainObjectToBounds(this.selectedObject);
+                    
+                    // If position was constrained, update transform controls
+                    if (!this.selectedObject.position.equals(currentPos)) {
+                        this.transformControls.update();
+                    }
+                }
+            });
+        
+            // Add mouse/touch event listeners for continuous constraint checking
+            this.transformControls.addEventListener('mouseMove', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
                 }
             });
-        }        
+        
+            this.transformControls.addEventListener('objectChange', () => {
+                if (this.selectedObject) {
+                    this.constrainObjectToBounds(this.selectedObject);
+                }
+            });
+        }
+        
+        constrainObjectToBounds(object) {
+            // Get object's bounding box
+            const bbox = new THREE.Box3().setFromObject(object);
+            
+            // Room dimensions (slightly smaller than actual to prevent clipping)
+            const roomWidth = 19.5;
+            const roomDepth = 19.5;
+            const roomHeight = 9.5;
+        
+            // Get the object boundaries
+            const bottomY = bbox.min.y;
+            const topY = bbox.max.y;
+            const leftX = bbox.min.x;
+            const rightX = bbox.max.x;
+            const frontZ = bbox.min.z;
+            const backZ = bbox.max.z;
+        
+            // Store original position
+            const originalPosition = object.position.clone();
+        
+            // Calculate allowed ranges based on object size
+            const objectWidth = rightX - leftX;
+            const objectHeight = topY - bottomY;
+            const objectDepth = backZ - frontZ;
+        
+            // Calculate bounds
+            const minX = -10 + objectWidth/2;
+            const maxX = 10 - objectWidth/2;
+            const minZ = -10 + objectDepth/2;
+            const maxZ = 10 - objectDepth/2;
+            const minY = objectHeight/2;
+            const maxY = roomHeight - objectHeight/2;
+        
+            // Clamp position within bounds
+            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
+            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
+            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
+        
+            // Log position changes if any occurred
+            if (!object.position.equals(originalPosition)) {
+                console.log('Position constrained:', 
+                    'from:', originalPosition, 
+                    'to:', object.position.clone());
+            }
+        }
+             
         
 
         createRoom() {
