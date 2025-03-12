@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.selectedObject = null;
             this.transformMode = 'translate'; // 'translate', 'rotate', or 'scale'
             this.animate();
+            this.loadSceneState();
         }
 
         init() {
@@ -291,7 +292,12 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Loading file:', file.name);
         
             const loader = new THREE.GLTFLoader();
-            const url = URL.createObjectURL(file);
+            const url= URL.createObjectURL(file);
+            this.loadModelFromUrl(url, {
+                id: 'object_' + Date.now(),
+                position: [0, 0, 0],
+                rotation: [0, 0, 0],
+                scale: [1, 1, 1]});
         
             loader.load(url, 
                 (gltf) => {
@@ -343,6 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error loading model:', error);
                 }
             );
+            this.saveSceneState();
         }
         
 
@@ -441,6 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.transformControls) {
                 this.transformControls.update();
             }
+            this.saveSceneState();
         }
         
 
@@ -454,6 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const listItems = document.querySelectorAll('.object-item');
                 listItems.forEach(item => item.classList.remove('selected'));
             }
+            this.saveSceneState();
         }
         
 
@@ -480,7 +489,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Attach transform controls to the object
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
-            
+            // Ensure the object has a modelUrl
+            if (!object.userData.modelUrl) {
+            object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
+            }
             // Ensure object is within bounds when selected
             this.constrainObjectToBounds(object);
             
@@ -539,6 +551,61 @@ document.addEventListener('DOMContentLoaded', () => {
             this.orbitControls.update();
             this.renderer.render(this.scene, this.camera);
         }
+
+        saveSceneState() {
+            const sceneState = {
+                objects: []
+            };
+            
+            this.objects.forEach((object, id) => {
+                sceneState.objects.push({
+                    id: id,
+                    position: object.position.toArray(),
+                    rotation: object.rotation.toArray(),
+                    scale: object.scale.toArray(),
+                    modelUrl: object.userData.modelUrl // We'll store the model URL
+                });
+            });
+            
+            localStorage.setItem('sceneState', JSON.stringify(sceneState));
+        }
+        
+        loadSceneState() {
+            const savedState = localStorage.getItem('sceneState');
+            if (savedState) {
+                const sceneState = JSON.parse(savedState);
+                sceneState.objects.forEach(objData => {
+                    this.loadModelFromUrl(objData.modmodelUrl, objData);
+                });
+            }
+        }
+        
+        loadModelFromUrl(url, objData) {
+            const loader = new THREE.GLTFLoader();
+            
+            loader.load(url, (gltf) => {
+                const model = gltf.scene;
+                
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                model.position.fromArray(objData.position);
+                model.rotation.fromArray(objData.rotation);
+                model.scale.fromArray(objData.scale);
+                
+                model.name = objData.id;
+                model.userData.modelUrl = url;
+                
+                this.objects.set(objData.id, model);
+                this.scene.add(model);
+            });
+        }
+
+
     }
 
     // Initialize the viewer
