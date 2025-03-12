@@ -1,6 +1,7 @@
 class RoomViewer {
     constructor() {
         this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0xf0f0f0); // Light gray background
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.controls = null;
@@ -15,23 +16,20 @@ class RoomViewer {
     }
 
     init() {
-        // Setup renderer
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
-        document.getElementById('scene-container').appendChild(this.renderer.domElement);
+        document.getElementById('scene-ne-container').appendChild(this.renderer.domElement);
 
-        // Setup camera
-        this.camera.position.set(0, 5, 10);
-
-        // Setup window resize
-        window.addEventListener('resize', () => this.onWindowResize(), false);
+        // Position camera for better view
+        this.camera.position.set(8, 8, 8);
+        this.camera.lookAt(0, 0, 0);
     }
 
     createRoom() {
-        // Floor
-        const floorGeometry = new THREE.PlaneGeometry(10, 10);
+        // Floor - make it lighter gray
+        const floorGeometry = new THREE.PlaneGeometry(20, 20);
         const floorMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x808080,
+            color: 0xaaaaaa, // Lighter gray
             side: THREE.DoubleSide
         });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -39,62 +37,69 @@ class RoomViewer {
         floor.receiveShadow = true;
         this.scene.add(floor);
 
-        // Walls
-        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+        // Walls - make them white
+        const wallMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff  // White
+        });
         
         // Back wall
         const backWall = new THREE.Mesh(
-            new THREE.PlaneGeometry(10, 5),
+            new THREE.PlaneGeometry(20, 10),
             wallMaterial
         );
-        backWall.position.z = -5;
-        backWall.position.y = 2.5;
+        backWall.position.z = -10;
+        backWall.position.y = 5;
+        backWall.receiveShadow = true;
         this.scene.add(backWall);
 
         // Side walls
         const leftWall = new THREE.Mesh(
-            new THREE.PlaneGeometry(10, 5),
+            new THREE.PlaneGeometry(20, 10),
             wallMaterial
         );
-        leftWall.position.x = -5;
-        leftWall.position.y = 2.5;
+        leftWall.position.x = -10;
+        leftWall.position.y = 5;
         leftWall.rotation.y = Math.PI / 2;
+        leftWall.receiveShadow = true;
         this.scene.add(leftWall);
 
         const rightWall = new THREE.Mesh(
-            new THREE.PlaneGeometry(10, 5),
+            new THREE.PlaneGeometry(20, 10),
             wallMaterial
         );
-        rightWall.position.x = 5;
-        rightWall.position.y = 2.5;
+        rightWall.position.x = 10;
+        rightWall.position.y = 5;
         rightWall.rotation.y = -Math.PI / 2;
+        rightWall.receiveShadow = true;
         this.scene.add(rightWall);
     }
 
     setupLights() {
-        // Ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // Brighter ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(ambientLight);
 
-        // Directional light
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 5, 5);
-        directionalLight.castShadow = true;
-        this.scene.add(directionalLight);
+        // Main directional light
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        mainLight.position.set(10, 10, 10);
+        mainLight.castShadow = true;
+        this.scene.add(mainLight);
+
+        // Additional light for better visibility
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fillLight.position.set(-10, 5, -10);
+        this.scene.add(fillLight);
     }
 
     setupControls() {
-        // Orbit controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.screenSpacePanning = false;
+        this.controls.maxPolarAngle = Math.PI / 2;
 
-        // File upload
         document.getElementById('modelUpload').addEventListener('change', (e) => this.handleFileUpload(e));
-
-        // Move mode
         document.getElementById('toggleMove').addEventListener('click', () => this.toggleMoveMode());
-
-        // Click handling
         this.renderer.domElement.addEventListener('click', (e) => this.handleClick(e));
     }
 
@@ -168,5 +173,6 @@ class RoomViewer {
 
 // Start the application
 window.addEventListener('load', () => {
+    console.log("Starting Room Viewer");
     new RoomViewer();
 });
