@@ -217,17 +217,17 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
+        
             console.log('Loading file:', file.name);
-
+        
             const loader = new THREE.GLTFLoader();
             const url = URL.createObjectURL(file);
-
+        
             loader.load(url, 
                 (gltf) => {
                     console.log('Model loaded successfully');
                     const model = gltf.scene;
-
+        
                     // Set up model properties before centering
                     model.traverse((child) => {
                         if (child.isMesh) {
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const objectId = 'object_' + Date.now();
                     model.name = objectId;
-
+        
                     // Center and process the model
                     const centeredModel = this.centerObject(model);
                     
@@ -246,20 +246,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bbox = new THREE.Box3().setFromObject(centeredModel);
                     const size = new THREE.Vector3();
                     bbox.getSize(size);
-
+        
                     // Position model in center of room, directly on floor
                     centeredModel.position.set(
-                        0,      // Center X
-                        0,      // On floor
-                        0          // Center Z
+                        0,                  // Center X
+                        size.y / 2,        // Half height above floor to ensure bottom touches floor
+                        0                  // Center Z
                     );
-
+        
                     // Add to scene and store reference
                     this.objects.set(objectId, centeredModel);
                     
                     // Select the centered model
                     this.selectObject(centeredModel);
                     this.updateObjectList();
+                    
+                    // Ensure the object is within bounds
+                    this.constrainObjectToBounds(centeredModel);
                     
                     URL.revokeObjectURL(url);
                 },
@@ -271,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             );
         }
+        
 
         centerObject(object) {
             // Get the bounding box of the entire object
@@ -306,49 +310,58 @@ document.addEventListener('DOMContentLoaded', () => {
             return container;
         }
         constrainObjectToBounds(object) {
-            // Get object's bounding box with some padding
-            const padding = 0.1; // Add 10cm padding
+            // Get object's bounding box
             const bbox = new THREE.Box3().setFromObject(object);
             const size = new THREE.Vector3();
             bbox.getSize(size);
-
+        
             // Room dimensions
-            const roomWidth = 19;  // Slightly less than actual room size (20)
-            const roomDepth = 19;  // Slightly less than actual room size (20)
-            const roomHeight = 9.5; // Slightly less than actual wall height (10)
-
-            // Calculate object dimensions with padding
-            const objectWidth = size.x + padding;
-            const objectDepth = size.z + padding;
-            const objectHeight = size.y + padding;
-
-            // Calculate bounds with stricter constraints
-            const minX = -roomWidth/2 + objectWidth/2;
-            const maxX = roomWidth/2 - objectWidth/2;
-            const minZ = -roomDepth/2 + objectDepth/2;
-            const maxZ = roomDepth/2 - objectDepth/2;
-            const minY = objectHeight/2; // Keep object on or above floor
-            const maxY = roomHeight - objectHeight/2;
-
-            // Store previous position
-            const prevPosition = object.position.clone();
-
-            // Clamp position within bounds
-            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
-            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
-            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
-
-            // If position was changed, log it
-            if (!object.position.equals(prevPosition)) {
-                console.log('Object constrained from:', prevPosition, 'to:', object.position.clone());
+            const roomWidth = 20;
+            const roomDepth = 20;
+            const roomHeight = 10;
+        
+            // Get the actual position of the object's bottom
+            const bottomY = bbox.min.y;
+               const topY = bbox.max.y;
+            const leftX = bbox.min.x;
+            const rightX = bbox.max.x;
+            const frontZ = bbox.min.z;
+            const backZ = bbox.max.z;
+        
+            // Constrain to floor (y = 0)
+            if (bottomY < 0) {
+                object.position.y += Math.abs(bottomY);
             }
-
+        
+            // Constrain to ceiling
+            if (topY > roomHeight) {
+                object.position.y -= (topY - roomHeight);
+            }
+        
+            // Constrain to walls
+            // Left wall (x = -10)
+            if (leftX < -10) {
+                object.position.x +x += Math.abs(leftX + 10);
+            }
+            // Right wall (x = 10)
+            if (rightX > 10) {
+                object.position.x -= (rightX - 10);
+            }
+            // Back wall (z = -10)
+            if (backZ > 10) {
+                object.position.z -= (backZ - 10);
+            }
+            // Front wall (z = -10)
+            if (frontZ < -10) {
+                object.position.z += Math.abs(frontZ + 10);
+            }
+        
             // Update transform controls
             if (this.transformControls) {
                 this.transformControls.update();
             }
         }
-
+        
 
         deselectObject() {
             console.log('Deselecting object');
@@ -360,7 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const listItems = document.querySelectorAll('.object-item');
                 listItems.forEach(item => item.classList.remove('selected'));
             }
-        }        
+        }
+        
 
         setTransformMode(mode) {
             this.transformMode = mode;
