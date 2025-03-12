@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
-            this.renderer.dr.domElement.addEventListener('click', (event) => {
+            this.renderer.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 
                 raycaster.setFromCamera(mouse, this.camera);
-
+        
                 // Get all meshes from loaded objects
                 const objectMeshes = [];
                 this.objects.forEach(object => {
@@ -185,10 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 });
-
+        
                 // First, check intersections with objects only
                 const objectIntersects = raycaster.intersectObjects(objectMeshes, false);
-
+        
                 if (objectIntersects.length > 0) {
                     // Get the parent object of the intersected mesh
                     const selectedObject = objectIntersects[0].object.userData.parentObject;
@@ -199,19 +199,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         return; // Exit early if we hit an object
                     }
                 }
-
+        
                 // If we didn't hit any objects, check for room intersections
                 const roomParts = [this.floor, ...this.scene.children.filter(child => 
                     child.isMesh && !this.objects.has(child.name))];
                 
                 const roomIntersects = raycaster.intersectObjects(roomParts, false);
-
+        
                 if (roomIntersects.length > 0) {
                     console.log('Hit room, deselecting');
                     this.deselectObject();
                 }
             });
         }
+        
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
