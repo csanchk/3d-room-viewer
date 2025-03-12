@@ -161,10 +161,55 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('lockObject')?.addEventListener('click', () => this.lockSelectedObject());
             document.getElementById('deleteObject')?.addEventListener('click', () => this.deleteSelectedObject());
             
-            // File upload
-            document.getElementById('modelUpload')?.addEventListener('change', (e) => this.handleFileUpload(e));
+            // File upload - Fixed binding
+            const uploadElement = document.getElementById('modelUpload');
+            if (uploadElement) {
+                uploadElement.addEventListener('change', (e) => this.handleFileUpload(e));
+            }
         }
 
+        handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+        
+            console.log('Loading file:', file.name);
+        
+            const loader = new THREE.GLTFLoader();
+            const url = URL.createObjectURL(file);
+        
+            loader.load(url, 
+                // Success callback
+                (gltf) => {
+                    console.log('Model loaded successfully');
+                    const model = gltf.scene;
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    const objectId = 'object_' + Date.now();
+                    model.name = objectId;
+                    model.position.set(0, 0, 0);
+                    this.scene.add(model);
+                    this.objects.set(objectId, model);
+                    this.selectObject(model);
+                    this.updateObjectList();
+                    
+                    URL.revokeObjectURL(url);
+                },
+                // Progress callback
+                (progress) => {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                // Error callback
+                (error) => {
+                    console.error('Error loading model:', error);
+                }
+            );
+        }
+        
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
