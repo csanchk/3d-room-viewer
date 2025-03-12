@@ -31,6 +31,21 @@ document.addEventListener('DOMContentLoaded', () => {
             this.selectedObject = null;
             this.transformMode = 'translate'; // 'translate', 'rotate', or 'scale'
             this.animate();
+
+            // Add keyboard shortcuts
+            window.addEventListener('keydown', (event) => {
+                switch(event.key.toLowerCase()) {
+                    case 'g':
+                        this.setTransformMode('translate');
+                        break;
+                    case 'r':
+                        this.setTransformMode('rotate');
+                        break;
+                    case 's':
+                        this.setTransformMode('scale');
+                        break;
+                }
+            });
         }
 
         init() {
@@ -56,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(this.renderer.domElement);
         }
-
         setupScene() {
             // Orbit controls
             this.orbitControls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
@@ -155,21 +169,30 @@ document.addEventListener('DOMContentLoaded', () => {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
             // Click handler for object selection
-            this.renderer.domElement.addEventListener('click', (event) => {
+               this.renderer.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
                 const mouse = new THREE.Vector2();
                 
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 - 1;
                 
                 raycaster.setFromCamera(mouse, this.camera);
-                const intersects = raycaster.intersectObjects(Array.from(this.objects.values()));
-                
+
+                // Check for intersections with loaded objects
+                const objectsToCheck = Array.from(this.objects.values());
+                const intersects = raycaster.intersectObjects(objectsToCheck, true);
+
                 if (intersects.length > 0) {
-                    this.selectObject(intersects[0].object);
+                    // Find the root object (the loaded model)
+                    let selectedObject = intersects[0].object;
+                    while (selectedObject.parent && !this.objects.has(selectedObject.name)) {
+                        selectedObject = selectedObject.parent;
+                    }
+                    this.selectObject(selectedObject);
                 } else {
+                    // Clicked on empty space
                     this.deselectObject();
                 }
             });
@@ -180,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!file) return;
 
             const loader = new THREE.GLTFLoader();
-            const url = URL.createObjectURL(file);
+            const url = URL.createOteObjectURL(file);
 
             loader.load(url, (gltf) => {
                 const model = gltf.scene;
@@ -215,22 +238,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         selectObject(object) {
-            this.deselectObject();
-            this.selectedObject = object;
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
-            this.updateObjectList();
+            // Store the last transform mode if we're reselecting
+            const lastMode = this.transformMode;
             
-            // Highlight selected object in list
-            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) listItem.classList.add('selected');
-        }
+            // Deselect current object if it's different
+            if (this.selectedObject !== object) {
+                this.deselectObject();
+                this.selectedObject = object;
+                this.transformControls.attach(object);
+                this.transformControls.setMode(lastMode);
+                this.updateObjectList();
 
+                // Highlight selected object in list
+                const listItems = document.querySelectorAll('.object-item');
+                listItems.forEach(item => item.classList.remove('selected'));
+                const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+                if (listItem) listItem.classList.add('selected');
+            }
+        }
         deselectObject() {
             if (this.selectedObject) {
                 this.transformControls.detach();
                 this.selectedObject = null;
                 this.updateObjectList();
+                // Remove all selected classes from object list
+                const listItems = document.querySelectorAll('.object-item');
+                listItems.forEach(item => item.classList.remove('selected'));
             }
         }
 
@@ -253,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.selectedObject) {
                 this.transformControls.detach();
                 // You could store the locked state in the object if needed
-                this.selectedObject = null;
+                this.deselectObject();
             }
         }
 
@@ -262,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.transformControls.detach();
                 this.scene.remove(this.selectedObject);
                 this.objects.delete(this.selectedObject.name);
-                this.selectedObject = null;
+                this.deselectObject();
                 this.updateObjectList();
             }
         }
