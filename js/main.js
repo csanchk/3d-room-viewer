@@ -285,20 +285,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
+        
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
         
             console.log('Loading file:', file.name);
         
-            const loader = new THREE.GLTFLoader();
-            const url= URL.createObjectURL(file);
-            this.loadModelFromUrl(url, {
-                id: 'object_' + Date.now(),
-                position: [0, 0, 0],
-                rotation: [0, 0, 0],
-                scale: [1, 1, 1]});
+            const url = URL.createObjectURL(file);
+            const objectId = 'object_' + Date.now();
         
+            const loader = new THREE.GLTFLoader();
             loader.load(url, 
                 (gltf) => {
                     console.log('Model loaded successfully');
@@ -312,8 +309,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                     
-                    const objectId = 'object_' + Date.now();
                     model.name = objectId;
+                    model.userData.modelUrl = url; // Store the URL with the object
         
                     // Center and process the model
                     const centeredModel = this.centerObject(model);
@@ -325,9 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
                     // Position model in center of room, directly on floor
                     centeredModel.position.set(
-                        0,                  // Center X
-                        size.y / 2,        // Half height above floor to ensure bottom touches floor
-                        0                  // Center Z
+                        0,      // Center X
+                        0,      // On floor
+                        0       // Center Z
                     );
         
                     // Add to scene and store reference
@@ -337,19 +334,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.selectObject(centeredModel);
                     this.updateObjectList();
                     
-                    // Ensure the object is within bounds
-                    this.constrainObjectToBounds(centeredModel);
-                    
-                    URL.revokeObjectURL(url);
+                    // Save scene state after adding new object
+                    this.saveSceneState();
                 },
                 (progress) => {
                     console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
                 },
                 (error) => {
                     console.error('Error loading model:', error);
+                    URL.revokeObjectURL(url);
                 }
             );
-            this.saveSceneState();
         }
         
 
@@ -482,26 +477,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         selectObject(object) {
-            console.log('Selecting object:', object.name);
+            // ... existing code ...
             
-            this.selectedObject = object;           
-            
-            // Attach transform controls to the object
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
             // Ensure the object has a modelUrl
             if (!object.userData.modelUrl) {
-            object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
+                object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
             }
-            // Ensure object is within bounds when selected
-            this.constrainObjectToBounds(object);
             
-            this.updateObjectList();
-        
-            const listItems = document.querySelectorAll('.object-item');
-            listItems.forEach(item => item.classList.remove('selected'));
-            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) listItem.classList.add('selected');
+            // ... rest of the existing code ...
         }
           
 
