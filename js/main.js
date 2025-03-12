@@ -198,77 +198,72 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        setupEventListeners() {
+            window.addEventListener('resize', () => this.onWindowResize(), false);
+            
+            // Click handler for object selection
+            this.renderer.domElement.addEventListener('click', (event) => {
+                if (this.transformControls.dragging) return;
+                
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2();
+                
+                // Calculate mouse position correctly
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;  // Fixed the calculation
+                
+                raycaster.setFromCamera(mouse, this.camera);
         
-            console.log('Loading file:', file.name); // Debug log
-        
-            const loader = new THREE.GLTFLoader();
-            const url = URL.createObjectURL(file);  // This line was misspelled before
-        
-            loader.load(url, 
-                // Success callback
-                (gltf) => {
-                    console.log('Model loaded successfully'); // Debug log
-                    const model = gltf.scene;
-                    model.traverse((child) => {
+                // Get all objects to check, including their children
+                const objectsToCheck = [];
+                this.objects.forEach(object => {
+                    object.traverse((child) => {
                         if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
+                            objectsToCheck.push(child);
                         }
                     });
+                });
+        
+                // Check for intersections
+                const intersects = raycaster.intersectObjects(objectsToCheck, false);
+        
+                if (intersects.length > 0) {
+                    // Find the root object (the loaded model)
+                    let selectedObject = intersects[0].object;
+                    while (selectedObject.parent && !this.objects.has(selectedObject.name)) {
+                        selectedObject = selectedObject.parent;
+                    }
                     
-                    // Generate unique ID for the object
-                    const objectId = 'object_' + Date.now();
-                    model.name = objectId;
-                    
-                    // Position the model
-                    model.position.set(0, 0, 0);
-                    this.scene.add(model);
-                    
-                    // Store the object
-                    this.objects.set(objectId, model);
-                    
-                    // Select the new object
-                    this.selectObject(model);
-                    
-                    // Add to object list in UI
-                    this.updateObjectList();
-                    
-                    URL.revokeObjectURL(url);
-                },
-                // Progress callback
-                (progress) => {
-                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-                },
-                // Error callback
-                (error) => {
-                    console.error('Error loading model:', error);
+                    // Only select if it's a tracked object
+                    if (this.objects.has(selectedObject.name)) {
+                        console.log('Selected object:', selectedObject.name); // Debug log
+                        this.selectObject(selectedObject);
+                    }
+                } else {
+                    console.log('No object selected, deselecting'); // Debug log
+                    this.deselectObject();
                 }
-            );
-        }        
-
-        selectObject(object) {
-            // Store the last transform mode if we're reselecting
-            const lastMode = this.transformMode;
-            
-            // Deselect current object if it's different
-            if (this.selectedObject !== object) {
-                this.deselectObject();
-                this.selectedObject = object;
-                this.transformControls.attach(object);
-                this.transformControls.setMode(lastMode);
-                this.updateObjectList();
-
-                // Highlight selected object in list
-                const listItems = document.querySelectorAll('.object-item');
-                listItems.forEach(item => item.classList.remove('selected'));
-                const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-                if (listItem) listItem.classList.add('selected');
-            }
+            });
         }
+        
+        selectObject(object) {
+            console.log('Selecting object:', object.name); // Debug log
+            
+            // Always update selection, even if it's the same object
+            this.selectedObject = object;
+            this.transformControls.attach(object);
+            this.transformControls.setMode(this.transformMode);
+            this.updateObjectList();
+        
+            // Highlight selected object in list
+            const listItems = document.querySeySelectorAll('.object-item');
+            listItems.forEach(item => item.classList.remove('selected'));
+            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+            if (listItem) listItem.classList.add('selected');
+        }
+        
         deselectObject() {
+            console.log('Deselecting object'); // Debug log
             if (this.selectedObject) {
                 this.transformControls.detach();
                 this.selectedObject = null;
@@ -278,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 listItems.forEach(item => item.classList.remove('selected'));
             }
         }
-
+        
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
