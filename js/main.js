@@ -294,11 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
-            if (!object) {
-                console.error('Attempted to select null object');
-                return;
-            }
-        
             this.selectedObject = object;
             
             // Ensure the object has a modelUrl
@@ -306,14 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
             }
             
-            // Ensure transform controls attach to object's center
-            try {
-                this.transformControls.attach(object);
-                this.transformControls.setMode(this.transformMode);
-                console.log('Transform controls attached');
-            } catch (error) {
-                console.error('Error attaching transform controls:', error);
-            }
+            // Center the transform controls on the object
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            this.transformControls.position.copy(center);
+            
+            // Attach transform controls to object
+            this.transformControls.attach(object);
+            this.transformControls.setMode(this.transformMode);
             
             // Ensure object is within bounds when selected
             this.constrainObjectToBounds(object);
@@ -323,15 +318,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) {
-                listItem.classList.add('selected');
-            }
+            if (listItem) listItem.classList.add('selected');
         
             // Save scene state after selection
             this.saveSceneState();
-            
-            console.log('Selection complete');
         }
+        
               
         
         
@@ -703,11 +695,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     model.name = objectId;
                     model.userData.fileData = fileData || savedData.fileData;
         
+                    // Center the model
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    model.position.sub(center);
+        
                     // If loading a saved object, restore its transform
                     if (savedData) {
                         model.position.set(
                             savedData.position.x,
-                            savedData.position.y,
+                               savedData.position.y,
                             savedData.position.z
                         );
                         model.rotation.set(
@@ -721,11 +718,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             savedData.scale.z
                         );
                     } else {
-                        // New object - place at default position
-                        const bbox = new THREE.Box3().setFromObject(model);
-                        const size = new THREE.Vector3();
-                        bbox.getSize(size);
-                        model.position.set(0, size.y / 2, 0);
+                        // New object - place on the ground
+                        const box = new THREE.Box3().setFromObject(model);
+                        const size = box.getSize(new THREE.Vector3());
+                        model.position.y = size.y / 2;  // Place bottom of object on ground
                     }
         
                     // Add to scene and store reference
@@ -751,6 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             );
         }
+        
         
         
         loadSceneState() {
