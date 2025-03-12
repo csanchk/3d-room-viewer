@@ -201,41 +201,53 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
+        
+            console.log('Loading file:', file.name); // Debug log
+        
             const loader = new THREE.GLTFLoader();
-            const url = URL.createOteObjectURL(file);
-
-            loader.load(url, (gltf) => {
-                const model = gltf.scene;
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-                
-                // Generate unique ID for the object
-                const objectId = 'object_' + Date.now();
-                model.name = objectId;
-                
-                // Position the model
-                model.position.set(0, 0, 0);
-                this.scene.add(model);
-                
-                // Store the object
-                this.objects.set(objectId, model);
-                
-                // Select the new object
-                this.selectObject(model);
-                
-                // Add to object list in UI
-                this.updateObjectList();
-                
-                URL.revokeObjectURL(url);
-            }, undefined, (error) => {
-                console.error('Error loading model:', error);
-            });
-        }
+            const url = URL.createObjectURL(file);  // This line was misspelled before
+        
+            loader.load(url, 
+                // Success callback
+                (gltf) => {
+                    console.log('Model loaded successfully'); // Debug log
+                    const model = gltf.scene;
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    // Generate unique ID for the object
+                    const objectId = 'object_' + Date.now();
+                    model.name = objectId;
+                    
+                    // Position the model
+                    model.position.set(0, 0, 0);
+                    this.scene.add(model);
+                    
+                    // Store the object
+                    this.objects.set(objectId, model);
+                    
+                    // Select the new object
+                    this.selectObject(model);
+                    
+                    // Add to object list in UI
+                    this.updateObjectList();
+                    
+                    URL.revokeObjectURL(url);
+                },
+                // Progress callback
+                (progress) => {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                // Error callback
+                (error) => {
+                    console.error('Error loading model:', error);
+                }
+            );
+        }        
 
         selectObject(object) {
             // Store the last transform mode if we're reselecting
