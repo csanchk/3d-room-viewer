@@ -231,20 +231,18 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
+        
             console.log('Loading file:', file.name);
-
+        
             const loader = new THREE.GLTFLoader();
             const url = URL.createObjectURL(file);
-
+        
             loader.load(url, 
                 (gltf) => {
                     console.log('Model loaded successfully');
                     const model = gltf.scene;
-                    
-                    // Center the model's pivot point
-                    this.centerObject(model);
-
+        
+                    // Set up model properties before centering
                     model.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
@@ -254,24 +252,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const objectId = 'object_' + Date.now();
                     model.name = objectId;
-
-                    // Calculate safe starting position
-                    const bbox = new THREE.Box3().setFromObject(model);
+        
+                    // Center and process the model
+                    const centeredModel = this.centerObject(model);
+                    
+                    // Calculate initial position
+                    const bbox = new THREE.Box3().setFromObject(centeredModel);
                     const size = new THREE.Vector3();
                     bbox.getSize(size);
-
-                    // Position object in center of room, slightly above floor
-                    model.position.set(
-                        0,  // Center X
-                        size.y / 2,  // Half height above floor
-                        0   // Center Z
+        
+                    // Position model in center of room, directly on floor
+                    centeredModel.position.set(
+                        0,      // Center X
+                        0,      // On floor
+                        0       // Center Z
                     );
-
-                    this.scene.add(model);
-                    this.objects.set(objectId, model);
+        
+                    // Add to scene and store reference
+                    this.objects.set(objectId, centeredModel);
                     
-                    // Automatically select the new object
-                    this.selectObject(model);
+                    // Select the centered model
+                    this.selectObject(centeredModel);
                     this.updateObjectList();
                     
                     URL.revokeObjectURL(url);
@@ -283,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error loading model:', error);
                 }
             );
-        }
+        }        
 
         constrainObjectToBounds(object) {
             // Get object's bounding box with some padding
@@ -363,63 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return container;
         }
 
-        handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            console.log('Loading file:', file.name);
-
-            const loader = new THREE.GLTFLoader();
-            const url = URL.createObjectURL(file);
-
-            loader.load(url, 
-                (gltf) => {
-                    console.log('Model loaded successfully');
-                    const model = gltf.scene;
-
-                    // Set up model properties before centering
-                    model.traverse((child) => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                    
-                    const objectId = 'object_' + Date.now();
-                    model.name = objectId;
-
-                    // Center and process the model
-                    const centeredModel = this.centerObject(model);
-                       
-                    // Calculate initial position
-                    const bbox = new THREE.Box3().setFromObject(centeredModel);
-                    const size = new THREE.Vector3();
-                    bbox.getSize(size);
-
-                    // Position model in center of room, slightly above floor
-                    centeredModel.position.set(
-                        0,           // Center X
-                        size.y / 2,  // Half height above floor
-                        0            // Center Z
-                    );
-
-                    // Add to scene and store reference
-                    this.objects.set(objectId, centeredModel);
-                    
-                    // Select the centered model
-                    this.selectObject(centeredModel);
-                    this.updateObjectList();
-                    
-                    URL.revokeObjectURL(url);
-                },
-                (progress) => {
-                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-                },
-                (error) => {
-                    console.error('Error loading model:', error);
-                }
-            );
-        }
 
         selectObject(object) {
             console.log('Selecting object:', object.name);
