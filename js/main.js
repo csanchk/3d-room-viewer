@@ -609,17 +609,149 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             this.objects.forEach((object, id) => {
+                // Save object's state including its file data
                 sceneState.objects.push({
                     id: id,
-                    position: object.position.toArray(),
-                    rotation: object.rotation.toArray(),
-                    scale: object.scale.toArray(),
-                    modelUrl: object.userData.modelUrl // We'll store the model URL
+                    position: {
+                        x: object.position.x,
+                        y: object.position.y,
+                        z: object.position.z
+                    },
+                    rotation: {
+                        x: object.rotation.x,
+                        y: object.rotation.y,
+                        z: object.rotation.z
+                    },
+                    scale: {
+                        x: object.scale.x,
+                        y: object.scale.y,
+                        z: object.scale.z
+                    },
+                    // Store the file data as base64
+                    fileData: object.userData.fileData
                 });
             });
             
             localStorage.setItem('sceneState', JSON.stringify(sceneState));
+            console.log('Scene saved:', sceneState);
         }
+        
+        loadSceneState() {
+            const savedState = localStorage.getItem('sceneState');
+            if (savedState) {
+                const sceneState = JSON.parse(savedState);
+                console.log('Loading saved scene:', sceneState);
+                
+                sceneState.objects.forEach(objData => {
+                    // Convert base64 back to file
+                    const fileData = objData.fileData;
+                    if (fileData) {
+                        const blob = this.base64ToBlob(fileData);
+                        this.loadSavedObject(blob, objData);
+                    }
+                });
+            }
+        }
+        
+        // Helper method to convert base64 to blob
+        base64ToBlob(base64) {
+            const parts = base64.split(';base64,');
+            const contentType = parts[0].split(':')[1] || 'application/octet-stream';
+            const raw = window.atob(parts[1]);
+            const rawLength = raw.length;
+            const uInt8Array = new Uint8Array(rawLength);
+        
+            for (let i = 0; i < rawLength; ++i) {
+                uInt8Array[i] = raw.charCodeAt(i);
+            }
+        
+            return new Blob([uInt8Array], { type: contentType });
+        }
+        
+        // Modified handleFileUpload to save file data
+        handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+        
+            // Read file as base64
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const fileData = e.target.result; // This is the base64 data
+                this.loadSavedObject(file, null, fileData);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // New method to handle loading objects
+        loadSavedObject(file, savedData = null, fileData = null) {
+            const url = URL.createObjectURL(file);
+            const objectId = savedData ? savedData.id : 'object_' + Date.now();
+        
+            const loader = new THREE.GLTFLoader();
+            loader.load(url, 
+                (gltf) => {
+                    console.log('Model loaded successfully');
+                    const model = gltf.scene;
+        
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    model.name = objectId;
+                    model.userData.fileData = fileData || savedData.fileData;
+        
+                    // If loading a saved object, restore its transform
+                    if (savedData) {
+                        model.position.set(
+                            savedData.position.x,
+                            savedData.position.y,
+                            savedData.position.z
+                        );
+                        model.rotation.set(
+                            savedData.rotation.x,
+                            savedData.rotation.y,
+                            savedData.rotation.z
+                        );
+                        model.scale.set(
+                            savedData.scale.x,
+                            savedData.scale.y,
+                            savedData.scale.z
+                        );
+                    } else {
+                        // New object - place at default position
+                        const bbox = new THREE.Box3().setFromObject(model);
+                        const size = new THREE.Vector3();
+                        bbox.getSize(size);
+                        model.position.set(0, size.y / 2, 0);
+                    }
+        
+                    // Add to scene and store reference
+                    this.scene.add(model);
+                    this.objects.set(objectId, model);
+                    
+                    // Select the model if it's new
+                    if (!savedData) {
+                        this.selectObject(model);
+                    }
+                    
+                    this.updateObjectList();
+                    this.saveSceneState();
+        
+                    URL.revokeObjectURL(url);
+                },
+                (progress) => {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                (error) => {
+                    console.error('Error loading model:', error);
+                    URL.revokeObjectURL(url);
+                }
+            );
+        }
+        
         
         loadSceneState() {
             const savedState = localStorage.getItem('sceneState');
