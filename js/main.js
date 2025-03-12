@@ -330,22 +330,103 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         centerObject(object) {
-            // Center the object's geometry
+            // Get the bounding box of the entire object
             const bbox = new THREE.Box3().setFromObject(object);
             const center = bbox.getCenter(new THREE.Vector3());
             
-            object.position.sub(center);
+            // Create a new group to serve as the container
+            const container = new THREE.Group();
             
-            // If the object has children, adjust their positions
-            object.children.forEach(child => {
-                child.position.add(center);
-            });
+            // Add the container to the scene at the original position
+            this.scene.add(container);
+            
+            // Move all of the object's children to the container
+            while (object.children.length) {
+                const child = object.children[0];
+                
+                // Adjust child position relative to center
+                child.position.sub(center);
+                
+                // Move child to container
+                container.add(child);
+            }
+            
+            // Position container at the center point
+            container.position.copy(center);
+            
+            // Copy the name and other properties we need
+            container.name = object.name;
+            
+            // Remove the original object
+            object.parent?.remove(object);
+               
+            return container;
+        }
+
+        handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            console.log('Loading file:', file.name);
+
+            const loader = new THREE.GLTFLoader();
+            const url = URL.createObjectURL(file);
+
+            loader.load(url, 
+                (gltf) => {
+                    console.log('Model loaded successfully');
+                    const model = gltf.scene;
+
+                    // Set up model properties before centering
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    const objectId = 'object_' + Date.now();
+                    model.name = objectId;
+
+                    // Center and process the model
+                    const centeredModel = this.centerObject(model);
+                       
+                    // Calculate initial position
+                    const bbox = new THREE.Box3().setFromObject(centeredModel);
+                    const size = new THREE.Vector3();
+                    bbox.getSize(size);
+
+                    // Position model in center of room, slightly above floor
+                    centeredModel.position.set(
+                        0,           // Center X
+                        size.y / 2,  // Half height above floor
+                        0            // Center Z
+                    );
+
+                    // Add to scene and store reference
+                    this.objects.set(objectId, centeredModel);
+                    
+                    // Select the centered model
+                    this.selectObject(centeredModel);
+                    this.updateObjectList();
+                    
+                    URL.revokeObjectURL(url);
+                },
+                (progress) => {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                (error) => {
+                    console.error('Error loading model:', error);
+                }
+            );
         }
 
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
             this.selectedObject = object;
+            
+            // Ensure transform controls attach to object's center
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
             
