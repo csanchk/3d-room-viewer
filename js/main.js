@@ -214,110 +214,114 @@ document.addEventListener('DOMContentLoaded', () => {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
             // Click handler for object selection
-               this.renderer.domElement.addEventListener('click', (event) => {
-                if (this.transformControls.dragging) return;
-                
-                const raycaster = new THREE.Raycaster();
-                const mouse = new THREE.Vector2();
-                
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 - 1;
-                
-                raycaster.setFromCamera(mouse, this.camera);
-
-                // Check for intersections with loaded objects
-                const objectsToCheck = Array.from(this.objects.values());
-                const intersects = raycaster.intersectObjects(objectsToCheck, true);
-
-                if (intersects.length > 0) {
-                    // Find the root object (the loaded model)
-                    let selectedObject = intersects[0].object;
-                    while (selectedObject.parent && !this.objects.has(selectedObject.name)) {
-                        selectedObject = selectedObject.parent;
-                    }
-                    this.selectObject(selectedObject);
-                } else {
-                    // Clicked on empty space
-                    this.deselectObject();
-                }
-            });
-        }
-
-        setupEventListeners() {
-            window.addEventListener('resize', () => this.onWindowResize(), false);
-            
-            // Click handler for object selection
             this.renderer.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
                 const mouse = new THREE.Vector2();
                 
-                // Calculate mouse position correctly
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;  // Fixed the calculation
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 
                 raycaster.setFromCamera(mouse, this.camera);
         
-                // Get all objects to check, including their children
-                const objectsToCheck = [];
+                // Create an array to store objects and their bounding boxes
+                const selectableMeshes = [];
                 this.objects.forEach(object => {
-                    object.traverse((child) => {
-                        if (child.isMesh) {
-                            objectsToCheck.push(child);
-                        }
-                    });
+                    // Create a bounding box helper (invisible)
+                    const bbox = new THREE.Box3().setFromObject(object);
+                    const boxGeometry = new THREE.BoxGeometry(
+                        bbox.max.x - bbox.min.x,
+                        bbox.max.y - bbox.min.y,
+                        bbox.max.z - bbox.min.z
+                    );
+                    
+                    // Create an invisible mesh for the bounding box
+                    const boxMesh = new THREE.Mesh(
+                        boxGeometry,
+                        new THREE.MeshBasicMaterial({ visible: false })
+                    );
+                    
+                    // Position the box at the center of the object
+                    boxMesh.position.copy(object.position);
+                    boxMesh.userData.parentObject = object; // Store reference to the actual object
+                    
+                    selectableMeshes.push(boxMesh);
                 });
         
-                // Check for intersections
-                const intersects = raycaster.intersectObjects(objectsToCheck, false);
+                // Check for intersections with the bounding boxes
+                const intersects = raycaster.intersectObjects(selectableMeshes);
         
                 if (intersects.length > 0) {
-                    // Find the root object (the loaded model)
-                    let selectedObject = intersects[0].object;
-                    while (selectedObject.parent && !this.objects.has(selectedObject.name)) {
-                        selectedObject = selectedObject.parent;
-                    }
-                    
-                    // Only select if it's a tracked object
-                    if (this.objects.has(selectedObject.name)) {
-                        console.log('Selected object:', selectedObject.name); // Debug log
-                        this.selectObject(selectedObject);
-                    }
+                    // Get the actual object from the intersected box's userData
+                    const selectedObject = intersects[0].object.userData.parentObject;
+                    console.log('Selected object:', selectedObject.name);
+                    this.selectObject(selectedObject);
                 } else {
-                    console.log('No object selected, deselecting'); // Debug log
+                    console.log('No object selected, deselecting');
                     this.deselectObject();
                 }
+        
+                // Clean up temporary meshes
+                selectableMeshes.forEach(mesh => {
+                    mesh.geometry.dispose();
+                    mesh.material.dispose();
+                });
             });
         }
         
+        // Optional: Add this method to visualize the selection bounds (for debugging)
+        visualizeSelectionBounds(object) {
+            // Remove any existing selection box
+            const existingBox = this.scene.getObjectByName('selectionBox');
+            if (existingBox) {
+                this.scene.remove(existingBox);
+            }
+        
+            if (object) {
+                const bbox = new THREE.Box3().setFromObject(object);
+                const helper = new THREE.Box3Helper(bbox, 0x00ff00);
+                helper.name = 'selectionBox';
+                this.scene.add(helper);
+            }
+        }
+        
+        // Update the selectObject method to include visualization if needed
         selectObject(object) {
-            console.log('Selecting object:', object.name); // Debug log
+            console.log('Selecting object:', object.name);
             
-            // Always update selection, even if it's the same object
             this.selectedObject = object;
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
             this.updateObjectList();
         
-            // Highlight selected object in list
-            const listItems = document.querySeySelectorAll('.object-item');
+            // Uncomment to visualize selection bounds
+            // this.visualizeSelectionBounds(object);
+        
+            const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
         }
         
         deselectObject() {
-            console.log('Deselecting object'); // Debug log
+            console.log('Deselecting object');
             if (this.selectedObject) {
                 this.transformControls.detach();
                 this.selectedObject = null;
+                
+                // Remove selection visualization if it exists
+                const existingBox = this.scene.getObjectByName('selectionBox');
+                if (existingBox) {
+                    this.scene.remove(existingBox);
+                }
+                
                 this.updateObjectList();
-                // Remove all selected classes from object list
                 const listItems = document.querySelectorAll('.object-item');
                 listItems.forEach(item => item.classList.remove('selected'));
             }
         }
+        
         
         setTransformMode(mode) {
             this.transformMode = mode;
