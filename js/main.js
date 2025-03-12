@@ -261,7 +261,126 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.deselectObject();
                 }
             });
+            this.transformControls.addEventListener('objectChange', () => {
+                if (this.selectedObject) {
+                    this.constrainObjectToBounds(this.selectedObject);
+                }
+            });
         }
+        constrainObjectToBounds(object) {
+            // Get object's bounding box
+            const bbox = new THREE.Box3().setFromObject(object);
+            const size = new THREE.Vector3();
+            bbox.getSize(size);
+    
+            // Room dimensions (matching your room setup)
+            const roomWidth = 20;  // Total width of room
+            const roomDepth = 20;  // Total depth of room
+            const roomHeight = 10; // Height of walls
+    
+            // Calculate object dimensions
+            const objectWidth = size.x;
+            const objectDepth = size.z;
+            const objectHeight = size.y;
+    
+            // Constrain position
+            const minX = -roomWidth/2 + objectWidth/2;
+            const maxX = roomWidth/2 - objectWidth/2;
+            const minZ = -roomDepth/2 + objectDepth/2;
+            const maxZ = roomDepth/2 - objectDepth/2;
+            const minY = objectHeight/2; // Keep object on or above floor
+            const maxY = roomHeight - objectHeight/2;
+    
+            // Clamp position within bounds
+            object.position.x = Math.max(minX, Math.min(maxX, object.position.x));
+            object.position.z = Math.max(minZ, Math.min(maxZ, object.position.z));
+            object.position.y = Math.max(minY, Math.min(maxY, object.position.y));
+    
+            // Update transform controls position
+            this.transformControls.update();
+        }
+    
+        handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+    
+            console.log('Loading file:', file.name);
+    
+            const loader = new THREE.GLTFLoader();
+            const url = URL.createObjectURL(file);
+    
+            loader.load(url, 
+                (gltf) => {
+                    console.log('Model loaded successfully');
+                    const model = gltf.scene;
+                    
+                    // Center the model's pivot point
+                    this.centerObject(model);
+    
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    const objectId = 'object_' + Date.now();
+                    model.name = objectId;
+    
+                    // Position object at a safe starting position
+                    model.position.set(0, 0, 0);
+                    this.scene.add(model);
+                    
+                    // Ensure initial position is valid
+                    this.constrainObjectToBounds(model);
+    
+                    this.objects.set(objectId, model);
+                    this.selectObject(model);
+                    this.updateObjectList();
+                    
+                    URL.revokeObjectURL(url);
+                },
+                (progress) => {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                (error) => {
+                    console.error('Error loading model:', error);
+                }
+            );
+        }
+    
+        centerObject(object) {
+            // Center the object's geometry
+            const bbox = new THREE.Box3().setFromObject(object);
+            const center = bbox.getCenter(new THREE.Vector3());
+            
+            object.position.sub(center);
+            
+            // If the object has children, adjust their positions
+            object.children.forEach(child => {
+                child.position.add(center);
+            });
+        }
+    
+        // Update selectObject to include boundary checking
+        selectObject(object) {
+            console.log('Selecting object:', object.name);
+            
+            this.selectedObject = object;
+            this.transformControls.attach(object);
+            this.transformControls.setMode(this.transformMode);
+            
+            // Ensure object is within bounds when selected
+            this.constrainObjectToBounds(object);
+            
+            this.updateObjectList();
+    
+            const listItems = document.querySelectorAll('.object-item');
+            listItems.forEach(item => item.classList.remove('selected'));
+            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+            if (listItem) listItem.classList.add('selected');
+        }
+    }
         
         selectObject(object) {
             console.log('Selecting object:', object.name);
