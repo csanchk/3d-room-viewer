@@ -213,7 +213,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
-            // Click handler for object selection
             this.renderer.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
@@ -225,79 +224,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 raycaster.setFromCamera(mouse, this.camera);
         
-                // Create an array to store objects and their bounding boxes
-                const selectableMeshes = [];
+                // Get all meshes from loaded objects
+                const objectMeshes = [];
                 this.objects.forEach(object => {
-                    // Create a bounding box helper (invisible)
-                    const bbox = new THREE.Box3().setFromObject(object);
-                    const boxGeometry = new THREE.BoxGeometry(
-                        bbox.max.x - bbox.min.x,
-                        bbox.max.y - bbox.min.y,
-                        bbox.max.z - bbox.min.z
-                    );
-                    
-                    // Create an invisible mesh for the bounding box
-                    const boxMesh = new THREE.Mesh(
-                        boxGeometry,
-                        new THREE.MeshBasicMaterial({ visible: false })
-                    );
-                    
-                    // Position the box at the center of the object
-                    boxMesh.position.copy(object.position);
-                    boxMesh.userData.parentObject = object; // Store reference to the actual object
-                    
-                    selectableMeshes.push(boxMesh);
+                    object.traverse((child) => {
+                        if (child.isMesh) {
+                            // Store reference to parent object
+                            child.userData.parentObject = object;
+                            objectMeshes.push(child);
+                        }
+                    });
                 });
         
-                // Check for intersections with the bounding boxes
-                const intersects = raycaster.intersectObjects(selectableMeshes);
+                // First, check intersections with objects only
+                const objectIntersects = raycaster.intersectObjects(objectMeshes, false);
         
-                if (intersects.length > 0) {
-                    // Get the actual object from the intersected box's userData
-                    const selectedObject = intersects[0].object.userData.parentObject;
-                    console.log('Selected object:', selectedObject.name);
-                    this.selectObject(selectedObject);
-                } else {
-                    console.log('No object selected, deselecting');
-                    this.deselectObject();
+                if (objectIntersects.length > 0) {
+                    // Get the parent object of the intersected mesh
+                    const selectedObject = objectIntersects[0].object.userData.parentObject;
+                    
+                    if (selectedObject && this.objects.has(selectedObject.name)) {
+                        console.log('Selected object:', selectedObject.name);
+                        this.selectObject(selectedObject);
+                        return; // Exit early if we hit an object
+                    }
                 }
         
-                // Clean up temporary meshes
-                selectableMeshes.forEach(mesh => {
-                    mesh.geometry.dispose();
-                    mesh.material.dispose();
-                });
+                // If we didn't hit any objects, check for room intersections
+                const roomParts = [this.floor, ...this.scene.children.filter(child => 
+                    child.isMesh && !this.objects.has(child.name))];
+                
+                const roomIntersects = raycaster.intersectObjects(roomParts, false);
+        
+                if (roomIntersects.length > 0) {
+                    console.log('Hit room, deselecting');
+                    this.deselectObject();
+                }
             });
         }
         
-        // Optional: Add this method to visualize the selection bounds (for debugging)
-        visualizeSelectionBounds(object) {
-            // Remove any existing selection box
-            const existingBox = this.scene.getObjectByName('selectionBox');
-            if (existingBox) {
-                this.scene.remove(existingBox);
-            }
-        
-            if (object) {
-                const bbox = new THREE.Box3().setFromObject(object);
-                const helper = new THREE.Box3Helper(bbox, 0x00ff00);
-                helper.name = 'selectionBox';
-                this.scene.add(helper);
-            }
-        }
-        
-        // Update the selectObject method to include visualization if needed
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
+            // Always update selection
             this.selectedObject = object;
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
             this.updateObjectList();
         
-            // Uncomment to visualize selection bounds
-            // this.visualizeSelectionBounds(object);
+            // Optional: Make the selected object slightly transparent to help with manipulation
+            object.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    if (!child.material.originalOpacity) {
+                        child.material.originalOpacity = child.material.opacity || 1;
+                    }
+                    child.material.transparent = true;
+                    child.material.opacity = 0.8; // Make it slightly transparent when selected
+                }
+            });
         
+            // Update UI
             const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
@@ -307,20 +293,25 @@ document.addEventListener('DOMContentLoaded', () => {
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
+                // Restore original opacity
+                this.selectedObject.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (child.material.originalOpacity) {
+                            child.material.opacity = child.material.originalOpacity;
+                            child.material.transparent = child.material.opacity < 1;
+                        }
+                    }
+                });
+        
                 this.transformControls.detach();
                 this.selectedObject = null;
-                
-                // Remove selection visualization if it exists
-                const existingBox = this.scene.getObjectByName('selectionBox');
-                if (existingBox) {
-                    this.scene.remove(existingBox);
-                }
-                
                 this.updateObjectList();
+                
                 const listItems = document.querySelectorAll('.object-item');
                 listItems.forEach(item => item.classList.remove('selected'));
             }
         }
+        
         
         
         setTransformMode(mode) {
