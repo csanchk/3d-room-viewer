@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if we're on the viewer page
+    if (!document.querySelector('#scene-container')) {
+        return; // Exit if we're not on the viewer page
+    }
+
     const checkDependencies = () => {
         if (typeof THREE === 'undefined') {
             console.error('Three.js not loaded');
@@ -112,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
                 this.scene.add(ambientLight);
 
-                // Main directional light
+                   // Main directional light
                 const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
                 mainLight.position.set(5, 10, 5);
                 mainLight.castShadow = true;
