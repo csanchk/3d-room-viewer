@@ -298,19 +298,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Ensure the object has a modelUrl
             if (!object.userData.modelUrl) {
-                object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
+                object.userData.modelUrl = URL.createObjectURL(new Blob());
             }
+        
+            // Calculate object's world position
+            const worldPos = new THREE.Vector3();
+            object.getWorldPosition(worldPos);
             
-            // Center the transform controls on the object
-            const box = new THREE.Box3().setFromObject(object);
-            const center = box.getCenter(new THREE.Vector3());
-            this.transformControls.position.copy(center);
-            
-            // Attach transform controls to object
+            // Attach transform controls
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
             
-            // Ensure object is within bounds when selected
+            // Ensure object is within bounds
             this.constrainObjectToBounds(object);
             
             this.updateObjectList();
@@ -320,11 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
         
-            // Save scene state after selection
+            // Save scene state
             this.saveSceneState();
         }
-        
-              
         
         
         handleFileUpload(event) {
@@ -424,16 +421,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             return container;
         }
+
+
+    
         constrainObjectToBounds(object) {
-            // Get object's bounding box
+            // Get object's bounding box in world space
             const bbox = new THREE.Box3().setFromObject(object);
             
             // Room dimensions
-            const roomWidth = 20;
-            const roomDepth = 20;
-            const roomHeight = 10;
+            const roomWidth = 19;
+            const roomDepth = 19;
+            const roomHeight = 9.5;
         
-            // Get the object boundaries
+            // Get object boundaries
             const bottomY = bbox.min.y;
             const topY = bbox.max.y;
             const leftX = bbox.min.x;
@@ -444,52 +444,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Store original position
             const originalPosition = object.position.clone();
         
-            // Constrain to floor (y = 0)
+            // Constrain to floor
             if (bottomY < 0) {
-                object.position.y = object.position.y - bottomY;
-            }
-        
-            // Constrain to ceiling
-            if (topY > roomHeight) {
-                object.position.y = object.position.y - (topY - roomHeight);
+                object.position.y += Math.abs(bottomY);
             }
         
             // Constrain to walls
-            // Left wall (x = -10)
-            if (leftX < -10) {
-                object.position.x = object.position.x - (leftX + 10);
-            }
+            if (leftX < -10) object.position.x += Math.abs(leftX + 10);
+            if (rightX > 10) object.position.x -= (rightX - 10);
+            if (frontZ < -10) object.position.z += Math.abs(frontZ + 10);
+            if (backZ > 10) object.position.z -= (backZ - 10);
         
-            // Right wall (x = 10)
-            if (rightX > 10) {
-                object.position.x = object.position.x - (rightX - 10);
-            }
-        
-            // Back wall (z = -10)
-            if (backZ > 10) {
-                object.position.z = object.position.z - (backZ - 10);
-            }
-        
-            // Front wall (z = -10)
-            if (frontZ < -10) {
-                object.position.z = object.position.z + 10 + Math.abs(frontZ);
-            }
-        
-            // Log position changes if any occurred
+            // Update transform controls if position changed
             if (!object.position.equals(originalPosition)) {
-                console.log('Position constrained:', 
-                    'from:', originalPosition, 
-                    'to:', object.position.clone());
-            }
-        
-            // Update transform controls if they exist
-            if (this.transformControls) {
                 this.transformControls.update();
             }
-            this.saveSceneState();
         }
         
-
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
@@ -674,7 +645,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(file);
         }
         
-        // New method to handle loading objects
         loadSavedObject(file, savedData = null, fileData = null) {
             const url = URL.createObjectURL(file);
             const objectId = savedData ? savedData.id : 'object_' + Date.now();
@@ -685,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('Model loaded successfully');
                     const model = gltf.scene;
         
+                    // Setup model properties
                     model.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
@@ -695,42 +666,57 @@ document.addEventListener('DOMContentLoaded', () => {
                     model.name = objectId;
                     model.userData.fileData = fileData || savedData.fileData;
         
-                    // Center the model
-                    const box = new THREE.Box3().setFromObject(model);
-                    const center = box.getCenter(new THREE.Vector3());
+                    // Calculate bounding box before any transformations
+                    const bbox = new THREE.Box3().setFromObject(model);
+                    const size = new THREE.Vector3();
+                    const center = new THREE.Vector3();
+                    bbox.getSize(size);
+                    bbox.getCenter(center);
+        
+                    // Create a container group
+                    const container = new THREE.Group();
+                    this.scene.add(container);
+        
+                    // Add model to container
+                    container.add(model);
+                    
+                    // Center model within container
                     model.position.sub(center);
         
-                    // If loading a saved object, restore its transform
                     if (savedData) {
-                        model.position.set(
+                        // Restore saved position
+                        container.position.set(
                             savedData.position.x,
-                               savedData.position.y,
+                            savedData.position.y,
                             savedData.position.z
                         );
-                        model.rotation.set(
+                        container.rotation.set(
                             savedData.rotation.x,
                             savedData.rotation.y,
                             savedData.rotation.z
                         );
-                        model.scale.set(
+                        container.scale.set(
                             savedData.scale.x,
                             savedData.scale.y,
                             savedData.scale.z
                         );
                     } else {
-                        // New object - place on the ground
-                        const box = new THREE.Box3().setFromObject(model);
-                        const size = box.getSize(new THREE.Vector3());
-                        model.position.y = size.y / 2;  // Place bottom of object on ground
+                        // Place new object on ground
+                        container.position.set(
+                            0,                  // Center X
+                            bbox.min.y * -1,    // Place bottom on ground
+                            0                   // Center Z
+                        );
                     }
         
-                    // Add to scene and store reference
-                    this.scene.add(model);
-                    this.objects.set(objectId, model);
+                    // Store reference to container
+                    container.name = objectId;
+                    container.userData.fileData = model.userData.fileData;
+                    this.objects.set(objectId, container);
                     
-                    // Select the model if it's new
+                    // Select the container if it's new
                     if (!savedData) {
-                        this.selectObject(model);
+                        this.selectObject(container);
                     }
                     
                     this.updateObjectList();
@@ -749,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         
-        
+    
         loadSceneState() {
             const savedState = localStorage.getItem('sceneState');
             if (savedState) {
