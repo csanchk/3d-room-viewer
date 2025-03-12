@@ -61,16 +61,28 @@ document.addEventListener('DOMContentLoaded', () => {
             this.orbitControls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
             this.orbitControls.enableDamping = true;
             this.orbitControls.dampingFactor = 0.05;
-
-            // Transform controls
+        
+            // Transform controls with better configuration
             this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+            
+            // Configure transform controls appearance
+            this.transformControls.setSize(0.7);  // Make controls slightly smaller
+            this.transformControls.showX = true;
+            this.transformControls.showY = true;
+            this.transformControls.showZ = true;
+        
+            // Set up which axis directions to show (only positive)
+            if (this.transformControls.children[0]) {
+                this.transformControls.children[0].showNegativeAxes = false;
+            }
+            
             this.scene.add(this.transformControls);
-
+        
             // Transform controls events
             this.transformControls.addEventListener('dragging-changed', (event) => {
                 this.orbitControls.enabled = !event.value;
             });
-
+        
             // Add listener for transform controls changes
             this.transformControls.addEventListener('objectChange', () => {
                 if (this.selectedObject) {
@@ -78,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
 
         createRoom() {
             // Floor
@@ -383,7 +396,18 @@ document.addEventListener('DOMContentLoaded', () => {
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
+                // Detach and reattach to refresh the controls
+                const object = this.selectedObject;
+                this.transformControls.detach();
                 this.transformControls.setMode(mode);
+                
+                // Configure axes based on mode
+                if (this.transformControls.children[0]) {
+                    this.transformControls.children[0].showNegativeAxes = false;
+                }
+        
+                // Reattach with updated configuration
+                this.transformControls.attach(object);
             }
             
             // Update UI
@@ -393,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     button.classList.toggle('active', buttonId.includes(mode));
                 }
             });
-        }
+        }       
 
         lockSelectedObject() {
             if (this.selectedObject) {
