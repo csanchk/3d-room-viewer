@@ -62,20 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.orbitControls.enableDamping = true;
             this.orbitControls.dampingFactor = 0.05;
         
-            // Transform controls with better configuration
+            // Transform controls
             this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-            
-            // Configure transform controls appearance
-            this.transformControls.setSize(0.7);  // Make controls slightly smaller
-            this.transformControls.showX = true;
-            this.transformControls.showY = true;
-            this.transformControls.showZ = true;
-        
-            // Set up which axis directions to show (only positive)
-            if (this.transformControls.children[0]) {
-                this.transformControls.children[0].showNegativeAxes = false;
-            }
-            
+            this.transformControls.setSize(0.75);
             this.scene.add(this.transformControls);
         
             // Transform controls events
@@ -83,13 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.orbitControls.enabled = !event.value;
             });
         
-            // Add listener for transform controls changes
-            this.transformControls.addEventListener('objectChange', () => {
+            this.transformControls.addEventListener('objectChangange', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
                 }
             });
-        }
+        }        
         
 
         createRoom() {
@@ -372,36 +360,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const listItems = document.querySelectorAll('.object-item');
                 listItems.forEach(item => item.classList.remove('selected'));
             }
-        }
+        }        
 
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
-                // Get the center of the object
-                const bbox = new THREE.Box3().setFromObject(this.selectedObject);
-                const center = bbox.getCenter(new THREE.Vector3());
-                
-                this.transformControls.detach();
                 this.transformControls.setMode(mode);
-                
-                // Configure transform controls
-                this.transformControls.setSize(0.7);
-                this.transformControls.showX = true;
-                this.transformControls.showY = true;
-                this.transformControls.showZ = true;
-                
-                // Set position to object's center
-                this.transformControls.position.copy(center);
-                
-                // Attach the object
-                this.transformControls.attach(this.selectedObject);
-                
-                // Ensure controls are visible but not duplicated
-                this.transformControls.visible = true;
-                if (this.transformControls.children[0]) {
-                    this.transformControls.children[0].visible = true;
-                    this.transformControls.children[0].showNegativeAxes = false;
-                }
             }
             
             // Update UI
@@ -413,28 +377,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // Also update the selectObject method
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
-            this.selectedObject = object;
+            this.selectedObject = object;           
             
-            // Get the center of the object
-            const bbox = new THREE.Box3().setFromObject(object);
-            const center = bbox.getCenter(new THREE.Vector3());
-            
-            // Configure and position transform controls
-            this.transformControls.setSize(0.7);
-            this.transformControls.position.copy(center);
+            // Attach transform controls to the object
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
-            
-            // Ensure controls are visible but not duplicated
-            this.transformControls.visible = true;
-            if (this.transformControls.children[0]) {
-                this.transformControls.children[0].visible = true;
-                this.transformControls.children[0].showNegativeAxes = false;
-            }
             
             // Ensure object is within bounds when selected
             this.constrainObjectToBounds(object);
@@ -445,7 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
-        }             
+        }
+          
 
         lockSelectedObject() {
             if (this.selectedObject) {
