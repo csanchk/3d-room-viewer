@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
-               
+            
             this.renderer.domElement.addEventListener('click', (event) => {
                 if (this.transformControls.dragging) return;
                 
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Get all meshes from loaded objects
                 const objectMeshes = [];
                 this.objects.forEach(object => {
-                    console.log('Processing object:', object.name);
+                    console.log('ProProcessing object:', object.name);
                     object.traverse((child) => {
                         if (child.isMesh) {
                             child.userData.rootObject = object; // Store reference to root object
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const hitObject = intersects[0].object;
                     const rootObject = hitObject.userData.rootObject;
                     
-                    if (rootObject)ct) {
+                    if (rootObject) {
                         console.log('Selected root object:', rootObject.name);
                         this.selectObject(rootObject);
                     } else {
@@ -289,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
         
         selectObject(object) {
             console.log('Selecting object:', object.name);
