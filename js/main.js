@@ -66,27 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Transform controls
             this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
             this.transformControls.setSize(0.75);
+            
+            // Remove snapping for smoother movement
+            this.transformControls.setTranslationSnap(null);
+            this.transformControls.setRotationSnap(null);
             this.scene.add(this.transformControls);
-
-            // Transform controls setup
-    this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-    this.transformControls.setSize(0.75);
-    this.transformControls.setTranslationSnap(0.5); // Optional: snap to grid
-    this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // Optional: snap to 15-degree increments
-    this.scene.add(this.transformControls);
-
-    // Customize transform controls colors and appearance
-    this.transformControls.traverse((child) => {
-        if (child.material) {
-            if (child.name.includes('X')) {
-                child.material.color.setHex(0xff0000);
-            } else if (child.name.includes('Y')) {
-                child.material.color.setHex(0x00ff00);
-            } else if (child.name.includes('Z')) {
-                child.material.color.setHex(0x0000ff);
-            }
-        }
-    });
         
             // Transform controls events
             this.transformControls.addEventListener('dragging-changed', (event) => {
@@ -119,6 +103,21 @@ document.addEventListener('DOMContentLoaded', () => {
             this.transformControls.addEventListener('objectChange', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
+                }
+            });
+        
+            // Add precision mode with shift key
+            window.addEventListener('keydown', (event) => {
+                if (event.key === 'Shift') {
+                    this.transformControls.setTranslationSnap(0.1);
+                    this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(5));
+                }
+            });
+        
+            window.addEventListener('keyup', (event) => {
+                if (event.key === 'Shift') {
+                    this.transformControls.setTranslationSnap(null);
+                    this.transformControls.setRotationSnap(null);
                 }
             });
         }
@@ -249,6 +248,59 @@ document.addEventListener('DOMContentLoaded', () => {
             const uploadElement = document.getElementById('modelUpload');
             if (uploadElement) {
                 uploadElement.addEventListener('change', (e) => this.handleFileUpload(e));
+            }
+        
+            // Add space toggle buttons
+            document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
+            document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
+        
+            // Add keyboard shortcuts
+            window.addEventListener('keydown', (event) => {
+                switch(event.key.toLowerCase()) {
+                    case 'g':
+                        this.setTransformMode('translate');
+                        break;
+                    case 'r':
+                        this.setTransformMode('rotate');
+                        break;
+                    case 's':
+                        this.setTransformMode('scale');
+                        break;
+                    case 'space':
+                        // Toggle between local and world space
+                        const currentSpace = this.transformControls.space;
+                        this.setTransformSpace(currentSpace === 'local' ? 'world' : 'local');
+                        event.preventDefault();
+                        break;
+                }
+            });
+        
+            // Precision controls
+            const snapToggle = document.getElementById('snapToggle');
+            const snapValue = document.getElementById('snapValue');
+            const snapValueDisplay = document.getElementById('snapValueDisplay');
+            const snapSettings = document.querySelector('.snap-settings');
+        
+            if (snapToggle) {
+                snapToggle.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        snapSettings.style.display = 'block';
+                        this.transformControls.setTranslationSnap(parseFloat(snapValue.value));
+                    } else {
+                        snapSettings.style.display = 'none';
+                        this.transformControls.setTranslationSnap(null);
+                    }
+                });
+            }
+        
+            if (snapValue) {
+                snapValue.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    snapValueDisplay.textContent = value.toFixed(2);
+                    if (snapToggle.checked) {
+                        this.transformControls.setTranslationSnap(value);
+                    }
+                });
             }
         }
 
@@ -505,6 +557,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.transformControls.setMode(mode);
                 this.transformControls.setSpace('local'); // Helps with local rotation
         
+                // Ensure smooth movement by default
+                this.transformControls.setTranslationSnap(null);
+                this.transformControls.setRotationSnap(null);
+        
                 // Configure visibility and appearance of control axes
                 this.transformControls.showX = true;
                 this.transformControls.showY = true;
@@ -517,7 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
                     case 'rotate':
                         this.transformControls.setSize(1); // Slightly larger for rotation handles
-                        this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // Optional: 15-degree rotation snap
                         break;
                     case 'scale':
                         this.transformControls.setSize(0.65); // Slightly smaller for scale handles
