@@ -180,7 +180,7 @@ body {
 
 .home-button {
     position: absolute;
-    top: 10px;
+    top: 290px;  /* Adjusted to be below the object management panel */
     left: 10px;
     z-index: 1000;
     background-color: #4CAF50;
@@ -188,6 +188,11 @@ body {
     padding: 10px 20px;
     text-decoration: none;
     border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.home-button:hover {
+    background-color: #45a049;
 }
 
 .left-panel, .right-panel {
