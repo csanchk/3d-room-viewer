@@ -180,9 +180,9 @@ body {
 
 .home-button {
     position: absolute;
-    top: 290px;  /* Adjusted to be below the object management panel */
-    left: 10px;
-    z-index: 1000;
+    top: 20px;
+    left: 20px;
+    z-index: 1001; /* Increased z-index to ensure it's above panels */
     background-color: #4CAF50;
     color: white;
     padding: 10px 20px;
@@ -197,24 +197,33 @@ body {
 
 .left-panel, .right-panel {
     position: absolute;
-    top: 0;
     width: 250px;
-    height: 100%;
     background: rgba(255, 255, 255, 0.95);
     padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
     z-index: 1000;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin: 20px;
+    max-height: calc(100% - 40px); /* Account for margins */
 }
 
 .left-panel {
     left: 0;
-    border-right: 1px solid #ccc;
+    top: 70px; /* Move down to accommodate home button */
+    border: 1px solid rgba(204, 204, 204, 0.5);
 }
 
 .right-panel {
     right: 0;
-    border-left: 1px solid #ccc;
+    top: 20px;
+    border: 1px solid rgba(204, 204, 204, 0.5);
+}
+
+.left-panel:hover, .right-panel:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    transition: box-shadow 0.3s ease;
 }
 
 h3, h4 {
