@@ -168,7 +168,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
              
-        
+        setTransformSpace(space) {
+            if (this.transformControls) {
+                this.transformControls.setSpace(space);
+                
+                // Update UI buttons
+                document.getElementById('localSpace').classList.toggle('active', space === 'local');
+                document.getElementById('globalSpace').classList.toggle('active', space === 'world');
+                
+                console.log('Transform space changed to:', space);
+            }
+        }
 
         createRoom() {
             // Floor
@@ -254,6 +264,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
             document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
         
+            // Add space toggle buttons
+            document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
+            document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
+
             // Add keyboard shortcuts
             window.addEventListener('keydown', (event) => {
                 switch(event.key.toLowerCase()) {
@@ -380,6 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const worldPos = new THREE.Vector3();
             object.getWorldPosition(worldPos);
             
+            // Set default to local when selecting an object
+            this.setTransformSpace('local'); 
+
             // Attach transform controls
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
