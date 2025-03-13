@@ -109,3 +109,60 @@
 .axis-x { background: #ff0000; }
 .axis-y { background: #00ff00; }
 .axis-z { background: #0000ff; }
+
+.upload-section {
+    margin: 15px 0;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.upload-section input[type="file"] {
+    width: 100%;
+    padding: 5px;
+    margin-top: 5px;
+}
+
+/* Enhance the side menu styling */
+.side-menu {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 250px;
+    z-index: 1000;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.side-menu h3, .side-menu h4 {
+    margin: 10px 0;
+    color: #333;
+}
+
+.transform-controls {
+    margin-top: 15px;
+}
+
+.transform-controls button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 8px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.transform-controls button:hover {
+    background: #45a049;
+}
+
+.transform-controls button.active {
+    background: #2196F3;
+}

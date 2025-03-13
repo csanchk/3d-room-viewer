@@ -5,7 +5,6 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
- >
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
@@ -14,26 +13,22 @@
     
     <div id="scene-container"></div>
     
-    <!-- Upload Panel -->
-    <div class="controls-panel">
-        <input type="file" id="modelUpload" accept=".glb,.gltf,.obj">
-    </div>
-
     <!-- Side Menu for Object Controls -->
     <div class="side-menu">
-        
         <h3>Object Controls</h3>
+        
+        <!-- File Upload Section -->
+        <div class="upload-section">
+            <h4>Upload Model</h4>
+            <input type="file" id="modelUpload" accept=".glb,.gltf,.obj">
+        </div>
+
+        <!-- Object List -->
         <div class="object-list">
             <!-- Objects will be listed here -->
         </div>
-        <div class="transform-controls">
-            <h4>Transform</h4>
-            <button id="translateMode">Translate</button>
-            <button id="rotateMode">Rotate</button>
-            <button id="scaleMode">Scale</button>
-            <button id="lockObject">Lock Object</button>
-            <button id="deleteObject">Delete Object</button>
-        </div>
+
+        <!-- Transform Controls -->
         <div class="transform-controls">
             <h4>Transform Mode</h4>
             <button id="translateMode" title="Move (G)">Move</button>
@@ -43,10 +38,13 @@
             <h4>Transform Space</h4>
             <button id="localSpace">Local</button>
             <button id="globalSpace">Global</button>
+
+            <h4>Object Actions</h4>
+            <button id="lockObject">Lock Object</button>
+            <button id="deleteObject">Delete Object</button>
         </div>
     </div>
 
     <script src="js/main.js"></script>
-    
 </body>
 </html>
