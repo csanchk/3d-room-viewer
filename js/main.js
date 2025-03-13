@@ -553,18 +553,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
-                // Set the mode on transform controls
                 this.transformControls.setMode(mode);
-                this.transformControls.setSpace('local'); // Helps with local rotation
+                this.transformControls.setSpace('local');
         
-                // Ensure smooth movement by default
-                this.transformControls.setTranslationSnap(null);
-                this.transformControls.setRotationSnap(null);
-        
-                // Configure visibility and appearance of control axes
-                this.transformControls.showX = true;
-                this.transformControls.showY = true;
-                this.transformControls.showZ = true;
+                // Hide rotation axis
+                if (mode === 'rotate') {
+                    this.transformControls.showX = false;
+                    this.transformControls.showY = false;
+                    this.transformControls.showZ = false;
+                } else {
+                    this.transformControls.showX = true;
+                    this.transformControls.showY = true;
+                    this.transformControls.showZ = true;
+                }
         
                 // Customize the appearance based on mode
                 switch(mode) {
@@ -592,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         // Enhance visibility
-                        child.material.opacity = 0.85;
+                        child.material.opacity = mode === 'rotate' ? 0 : 0.85;
                         child.material.transparent = true;
                     }
                 });
@@ -617,6 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Log mode change for debugging
             console.log('Transform mode changed to:', mode);
         }
+        
         
         
         selectObject(object) {
