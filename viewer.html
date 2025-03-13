@@ -9,26 +9,25 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
-    <a href="/index.html" style="position: absolute; top: 10px; left: 10px; z-index: 1000; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Home</a>
+    <a href="/index.html" class="home-button">Back to Home</a>
     
     <div id="scene-container"></div>
     
-    <!-- Side Menu for Object Controls -->
-    <div class="side-menu">
-        <h3>Object Controls</h3>
-        
-        <!-- File Upload Section -->
+    <!-- New Left Side Panel for Object Management -->
+    <div class="left-panel">
+        <h3>Object Management</h3>
         <div class="upload-section">
             <h4>Upload Model</h4>
             <input type="file" id="modelUpload" accept=".glb,.gltf,.obj">
         </div>
-
-        <!-- Object List -->
         <div class="object-list">
             <!-- Objects will be listed here -->
         </div>
+    </div>
 
-        <!-- Transform Controls -->
+    <!-- Right Side Panel for Object Controls -->
+    <div class="right-panel">
+        <h3>Object Controls</h3>
         <div class="transform-controls">
             <h4>Transform Mode</h4>
             <button id="translateMode" title="Move (G)">Move</button>
@@ -42,6 +41,16 @@
             <h4>Object Actions</h4>
             <button id="lockObject">Lock Object</button>
             <button id="deleteObject">Delete Object</button>
+        </div>
+        <div class="precision-controls">
+            <h4>Precision Settings</h4>
+            <label>
+                <input type="checkbox" id="snapToggle"> Enable Snap
+            </label>
+            <div class="snap-settings" style="display: none;">
+                <input type="range" id="snapValue" min="0.01" max="1" step="0.01" value="0.1">
+                <span id="snapValueDisplay">0.1</span>
+            </div>
         </div>
     </div>
 

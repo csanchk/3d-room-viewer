@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateObjectList() {
             const objectList = document.querySelector('.object-list');
             if (!objectList) return;
-
+        
             objectList.innerHTML = '';
             this.objects.forEach((object, id) => {
                 const item = document.createElement('div');
