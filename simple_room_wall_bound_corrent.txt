@@ -67,26 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
             this.transformControls.setSize(0.75);
             this.scene.add(this.transformControls);
-
-            // Transform controls setup
-    this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-    this.transformControls.setSize(0.75);
-    this.transformControls.setTranslationSnap(0.5); // Optional: snap to grid
-    this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // Optional: snap to 15-degree increments
-    this.scene.add(this.transformControls);
-
-    // Customize transform controls colors and appearance
-    this.transformControls.traverse((child) => {
-        if (child.material) {
-            if (child.name.includes('X')) {
-                child.material.color.setHex(0xff0000);
-            } else if (child.name.includes('Y')) {
-                child.material.color.setHex(0x00ff00);
-            } else if (child.name.includes('Z')) {
-                child.material.color.setHex(0x0000ff);
-            }
-        }
-    });
         
             // Transform controls events
             this.transformControls.addEventListener('dragging-changed', (event) => {
@@ -308,10 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-        
-        
         }
-
         
         
         selectObject(object) {
@@ -501,68 +478,17 @@ document.addEventListener('DOMContentLoaded', () => {
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
-                // Set the mode on transform controls
                 this.transformControls.setMode(mode);
-                this.transformControls.setSpace('local'); // Helps with local rotation
-        
-                // Configure visibility and appearance of control axes
-                this.transformControls.showX = true;
-                this.transformControls.showY = true;
-                this.transformControls.showZ = true;
-        
-                // Customize the appearance based on mode
-                switch(mode) {
-                    case 'translate':
-                        this.transformControls.setSize(0.75);
-                        break;
-                    case 'rotate':
-                        this.transformControls.setSize(1); // Slightly larger for rotation handles
-                        this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // Optional: 15-degree rotation snap
-                        break;
-                    case 'scale':
-                        this.transformControls.setSize(0.65); // Slightly smaller for scale handles
-                        break;
-                }
-        
-                // Update transform controls appearance
-                this.transformControls.traverse((child) => {
-                    if (child.material) {
-                        // Set colors for different axes
-                        if (child.name.includes('X')) {
-                            child.material.color.setHex(0xff0000); // Red for X
-                        } else if (child.name.includes('Y')) {
-                            child.material.color.setHex(0x00ff00); // Green for Y
-                        } else if (child.name.includes('Z')) {
-                            child.material.color.setHex(0x0000ff); // Blue for Z
-                        }
-                        
-                        // Enhance visibility
-                        child.material.opacity = 0.85;
-                        child.material.transparent = true;
-                    }
-                });
             }
             
-            // Update UI buttons
+            // Update UI
             ['translateMode', 'rotateMode', 'scaleMode'].forEach(buttonId => {
                 const button = document.getElementById(buttonId);
                 if (button) {
                     button.classList.toggle('active', buttonId.includes(mode));
                 }
             });
-        
-            // Update control state
-            if (this.selectedObject) {
-                this.transformControls.update();
-                
-                // Ensure object stays within bounds after transform
-                this.constrainObjectToBounds(this.selectedObject);
-            }
-        
-            // Log mode change for debugging
-            console.log('Transform mode changed to:', mode);
         }
-        
         
         selectObject(object) {
             console.log('Selecting object:', object.name);

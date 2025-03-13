@@ -21,6 +21,7 @@
 
     <!-- Side Menu for Object Controls -->
     <div class="side-menu">
+        
         <h3>Object Controls</h3>
         <div class="object-list">
             <!-- Objects will be listed here -->
@@ -33,8 +34,19 @@
             <button id="lockObject">Lock Object</button>
             <button id="deleteObject">Delete Object</button>
         </div>
+        <div class="transform-controls">
+            <h4>Transform Mode</h4>
+            <button id="translateMode" title="Move (G)">Move</button>
+            <button id="rotateMode" title="Rotate (R)">Rotate</button>
+            <button id="scaleMode" title="Scale (S)">Scale</button>
+            
+            <h4>Transform Space</h4>
+            <button id="localSpace">Local</button>
+            <button id="globalSpace">Global</button>
+        </div>
     </div>
 
     <script src="js/main.js"></script>
+    
 </body>
 </html>
