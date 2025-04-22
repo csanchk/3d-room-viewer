@@ -34,6 +34,45 @@ document.addEventListener('DOMContentLoaded', () => {
             this.loadSceneState();
         }
 
+        resetObjectOrientation() {
+            if (this.selectedObject) {
+                // Store the original position
+                const originalPosition = this.selectedObject.position.clone();
+        
+                // Reset rotation
+                this.selectedObject.rotation.set(0, 0, 0);
+        
+                // Reset scale
+                this.selectedObject.scale.set(1, 1, 1);
+        
+                // Restore the original position
+                this.selectedObject.position.copy(originalPosition);
+        
+                // Update transform controls
+                this.transformControls.update();
+        
+                console.log('Object orientation reset');
+            }
+        }
+
+        bringObjectToFloor() {
+            if (this.selectedObject) {
+                // Compute the bounding box
+                const bbox = new THREE.Box3().setFromObject(this.selectedObject);
+        
+                // Calculate the vertical offset
+                const offset = bbox.min.y;
+        
+                // Move the object up by the offset
+                this.selectedObject.position.y -= offset;
+        
+                // Update transform controls
+                this.transformControls.update();
+        
+                console.log('Object brought to floor');
+            }
+        }        
+
         init() {
             const container = document.querySelector('#scene-container');
             if (!container) {
@@ -316,6 +355,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
+
+            document.getElementById('resetOrientation')?.addEventListener('click', () => this.resetObjectOrientation());
+            document.getElementById('bringToFloor')?.addEventListener('click', () => this.bringObjectToFloor());
         }
 
         setupEventListeners() {
