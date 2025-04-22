@@ -1,204 +1,86 @@
-/* Existing styles */
-
-.side-menu {
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    width: 250px;
-    z-index: 1000;
-}
-
-.side-menu h3 {
-    margin: 0 0 15px 0;
-    color: #333;
-}
-
-.side-menu h4 {
-    margin: 10px 0;
-    color: #666;
-}
-
-.transform-controls button {
-    display: block;
-    width: 100%;
-    margin: 5px 0;
-    padding: 8px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
-}
-
-.transform-controls button:hover {
-    background: #45a049;
-}
-
-.transform-controls button.active {
-    background-color: #2196F3;
-    color: white;
-}
-
-.object-list {
-    margin-bottom: 15px;
-    max-height: 150px;
-    overflow-y: auto;
-}
-
-.object-item {
-    padding: 5px;
-    margin: 2px 0;
-    background: #f0f0f0;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.object-item.selected {
-    background: #2196F3;
-    color: white;
-}
-/* Transform Controls Visual Enhancement */
-.transform-controls {
-    margin-top: 20px;
-}
-
-.transform-controls button {
-    position: relative;
-    padding: 10px 15px;
-    margin: 5px;
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    color: #333;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.transform-controls button:hover {
-    background: #e0e0e0;
-    border-color: #999;
-}
-
-.transform-controls button.active {
-    background: #4CAF50;
-    color: white;
-    border-color: #45a049;
-}
-
-/* Axis Indicators */
-.axis-indicator {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
-.axis-x, .axis-y, .axis-z {
-    position: absolute;
-    width: 2px;
-    height: 20px;
-    transform-origin: center bottom;
-}
-
-.axis-x { background: #ff0000; }
-.axis-y { background: #00ff00; }
-.axis-z { background: #0000ff; }
-
-.upload-section {
-    margin: 15px 0;
-    padding: 10px;
-    background: #f5f5f5;
-    border-radius: 4px;
-}
-
-.upload-section input[type="file"] {
-    width: 100%;
-    padding: 5px;
-    margin-top: 5px;
-}
-
-/* Enhance the side menu styling */
-.side-menu {
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    width: 250px;
-    z-index: 1000;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.side-menu h3, .side-menu h4 {
-    margin: 10px 0;
-    color: #333;
-}
-
-.transform-controls {
-    margin-top: 15px;
-}
-
-.transform-controls button {
-    width: 100%;
-    margin: 5px 0;
-    padding: 8px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.transform-controls button:hover {
-    background: #45a049;
-}
-
-.transform-controls button.active {
-    background: #2196F3;
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
     margin: 0;
     overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
 }
 
+/* Scene Container */
 #scene-container {
     position: absolute;
     width: 100%;
     height: 100%;
+    background: linear-gradient(to bottom, #e0e8ff, #ffffff);
 }
 
+/* Loading Overlay */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: white;
+    margin-top: 20px;
+    font-size: 1.2em;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Navigation */
 .home-button {
     position: absolute;
     top: 20px;
     left: 20px;
-    z-index: 1001; /* Increased z-index to ensure it's above panels */
+    z-index: 1001;
     background-color: #4CAF50;
     color: white;
-    padding: 10px 20px;
+    padding: 12px 24px;
     text-decoration: none;
     border-radius: 5px;
-    transition: background-color 0.3s;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .home-button:hover {
     background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
+/* Panels */
 .left-panel, .right-panel {
     position: absolute;
-    width: 250px;
+    width: 280px;
     background: rgba(255, 255, 255, 0.95);
     padding: 20px;
     box-sizing: border-box;
@@ -207,98 +89,308 @@ body {
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     margin: 20px;
-    max-height: calc(100% - 40px); /* Account for margins */
+    max-height: calc(100% - 40px);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
 }
 
 .left-panel {
     left: 0;
-    top: 70px; /* Move down to accommodate home button */
-    border: 1px solid rgba(204, 204, 204, 0.5);
+    top: 70px;
 }
 
 .right-panel {
     right: 0;
     top: 20px;
-    border: 1px solid rgba(204, 204, 204, 0.5);
 }
 
 .left-panel:hover, .right-panel:hover {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    transition: box-shadow 0.3s ease;
+    background: rgba(255, 255, 255, 0.98);
 }
 
+/* Panel Headers */
 h3, h4 {
+    color: #2c3e50;
     margin: 10px 0;
-    color: #333;
+    font-weight: 600;
 }
 
+h3 {
+    font-size: 1.2em;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+}
+
+h4 {
+    font-size: 1em;
+    margin-top: 15px;
+}
+
+/* Upload Section */
 .upload-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
     margin: 15px 0;
-    padding: 10px;
-    background: #f5f5f5;
-    border-radius: 4px;
+    border: 2px dashed #ccc;
+    transition: all 0.3s ease;
+}
+
+.upload-section:hover {
+    border-color: #4CAF50;
+    background: #f0f7f0;
 }
 
 .upload-section input[type="file"] {
     width: 100%;
-    padding: 5px;
-    margin-top: 5px;
+    padding: 8px;
+    margin-top: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
+/* Object List */
 .object-list {
-    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 15px 0;
+    padding: 5px;
 }
 
 .object-item {
-    padding: 5px;
-    margin: 2px 0;
-    background: #f0f0f0;
-    border-radius: 4px;
+    padding: 10px;
+    margin: 5px 0;
+    background: #f5f5f5;
+    border-radius: 6px;
     cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.object-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
 }
 
 .object-item.selected {
-    background: #2196F3;
-    color: white;
-}
-
-.transform-controls button, .precision-controls button {
-    width: 100%;
-    margin: 5px 0;
-    padding: 8px;
     background: #4CAF50;
     color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
+    font-weight: 500;
 }
 
-.transform-controls button:hover, .precision-controls button:hover {
+/* Controls */
+.transform-controls, .precision-controls {
+    margin: 15px 0;
+}
+
+.transform-controls button,
+.precision-controls button {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: #4CAF50;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.transform-controls button:hover,
+.precision-controls button:hover {
     background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .transform-controls button.active {
     background: #2196F3;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
 }
 
+/* Precision Controls */
 .precision-controls {
-    margin: 15px 0;
-    padding: 10px;
-    background: #f5f5f5;
-    border-radius: 4px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
 }
 
 .precision-controls label {
-    display: block;
-    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
 }
 
 .snap-settings {
-    margin-top: 10px;
+    padding: 10px 0;
 }
 
-.snap-settings input[type="range"] {
+/* Range Input Styling */
+input[type="range"] {
     width: 100%;
-    margin: 5px 0;
+    height: 5px;
+    border-radius: 5px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: #45a049;
+    transform: scale(1.2);
+}
+
+/* Checkbox Styling */
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Error Message */
+#error-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff6b6b;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sh-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { transform: translate(-50%, -100%); }
+    to { transform: translate(-50%, 0); }
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 5px 0;
+    z-index: 1500;
+}
+
+.context-menu ul {
+    list-style: none;
+}
+
+.context-menu li {
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.context-menu li:hover {
+    background: #f5f5f5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .left-panel, .right-panel {
+        width: calc(100% - 20px);
+        margin: 10px;
+        max-height: 30vh;
+    }
+
+    .left-panel {
+        top: auto;
+        bottom: 10px;
+    }
+
+    .right-panel {
+        top: 70px;
+    }
+
+    .transform-controls button,
+    .precision-controls button {
+        padding: 12px; /* Larger touch targets */
+    }
+
+    .home-button {
+        padding: 10px 16px;
+    }
+}
+
+/* Accessibility Focus Styles */
+button:focus,
+input:focus {
+    outline: 2px solid #2196F3;
+    outline-offset: 2px;
+}
+
+/* Tool Tips */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+[data-tooltip]:hover:before {
+    opacity: 1;
+    visibility: visible;
 }
