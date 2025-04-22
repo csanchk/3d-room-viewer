@@ -438,3 +438,22 @@ input:focus {
 .object-actions button:hover {
     background: #45a049;
 }
+
+.lock-popup {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 2px solid #333;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.lock-popup.locked {
+    background-color: rgba(255, 0, 0, 0.2);
+}
+
+.lock-popup.unlocked {
+    background-color: rgba(0, 255, 0, 0.2);
+}

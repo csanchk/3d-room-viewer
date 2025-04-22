@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.transformMode = 'translate'; // 'translate', 'rotate', or 'scale'
             this.animate();
             this.loadSceneState();
+            this.lockPopup = null;
+            this.lockedObjects = new Set();
         }
 
         resetObjectOrientation() {
@@ -410,6 +412,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         
         selectObject(object) {
+
+            if (this.lockedObjects.has(object.name)) {
+                console.log('Object is locked');
+                this.showLockPopup(object, true);
+                return;
+            }
             console.log('Selecting object:', object.name);
             
             this.selectedObject = object;
@@ -442,8 +450,74 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Save scene state
             this.saveSceneState();
+            this.showLockPopup(object, false);
         }
         
+        showLockPopup(object, isLocked) {
+            if (this.lockPopup) {
+                this.scene.remove(this.lockPopup);
+            }
+        
+            const popupGeometry = new THREE.PlaneGeometry(0.5, 0.2);
+            const popupMaterial = new THREE.MeshBasicMaterial({ 
+                color: isLocked ? 0xff0000 : 0x00ff00,
+                transparent: true,
+                opacity: 0.8
+            });
+            this.lockPopup = new THREE.Mesh(popupGeometry, popupMaterial);
+        
+            // Position the popup near the object
+            const objectPosition = new THREE.Vector3();
+            object.getWorldPosition(objectPosition);
+            this.lockPopup.position.copy(objectPosition);
+            this.lockPopup.position.y += 1; // Adjust this value as needed
+        
+            // Add text to the popup
+            const text = isLocked ? 'Unlock' : 'Lock';
+            const textGeometry = new THREE.TextGeometry(text, {
+                font: /* You need to load a font */,
+                size: 0.05,
+                height: 0.01
+            });
+            const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh.position.set(-0.1, -0.05, 0.01); // Adjust as needed
+            this.lockPopup.add(textMesh);
+        
+            this.scene.add(this.lockPopup);
+        
+            // Add click event to the popup
+            this.renderer.domElement.addEventListener('click', this.onPopupClick.bind(this));
+        }
+        
+        onPopupClick(event) {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+            raycaster.setFromCamera(mouse, this.camera);
+        
+            const intersects = raycaster.intersectObject(this.lockPopup);
+            if (intersects.length > 0) {
+                this.toggleLock();
+            }
+        }
+        
+        toggleLock() {
+            if (!this.selectedObject) return;
+        
+            const isLocked = this.lockedObjects.has(this.selectedObject.name);
+            if (isLocked) {
+                this.lockedObjects.delete(this.selectedObject.name);
+                this.transformControls.attach(this.selectedObject);
+            } else {
+                this.lockedObjects.add(this.selectedObject.name);
+                this.transformControls.detach();
+            }
+        
+            this.showLockPopup(this.selectedObject, !isLocked);
+        }
         
         handleFileUpload(event) {
             const file = event.target.files[0];
@@ -695,11 +769,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.saveSceneState();
         }
         
-
         lockSelectedObject() {
             if (this.selectedObject) {
-                this.transformControls.detach();
-                this.deselectObject();
+                this.toggleLock();
             }
         }
 
@@ -808,16 +880,74 @@ document.addEventListener('DOMContentLoaded', () => {
             return new Blob([uInt8Array], { type: contentType });
         }
         
-        // Modified handleFileUpload to save file data
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+        
+            console.log('Loading file:', file.name);
         
             // Read file as base64
             const reader = new FileReader();
             reader.onload = (e) => {
                 const fileData = e.target.result; // This is the base64 data
-                this.loadSavedObject(file, null, fileData);
+                const url = URL.createObjectURL(file);
+                const objectId = 'object_' + Date.now();
+        
+                const loader = new THREE.GLTFLoader();
+                loader.load(url, 
+                    (gltf) => {
+                        console.log('Model loaded successfully');
+                        const model = gltf.scene;
+        
+                        // Set up model properties
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                                child.userData.selectable = true; // Mark as selectable
+                            }
+                        });
+                        
+                        model.name = objectId;
+                        model.userData.modelUrl = url;
+                        model.userData.fileData = fileData; // Save the base64 data
+                        model.userData.selectable = true; // Mark root as selectable
+                        this.lockedObjects.delete(model.name); // Ensure new objects start unlocked
+        
+                        // Calculate bounding box
+                        const bbox = new THREE.Box3().setFromObject(model);
+                        const size = new THREE.Vector3();
+                        bbox.getSize(size);
+                        
+                        // Calculate height from bottom of bounding box
+                        const height = size.y / 2;
+        
+                        // Position model in center of room, with bottom exactly on floor
+                        model.position.set(0, height, 0);
+        
+                        // Add to scene and store reference
+                        this.scene.add(model);
+                        this.objects.set(objectId, model);
+                        
+                        console.log('Model added to scene:', objectId);
+                        
+                        // Select the model
+                        this.selectObject(model);
+                        this.updateObjectList();
+                        
+                        // Save scene state after adding new object
+                        this.saveSceneState();
+        
+                        URL.revokeObjectURL(url);
+                    },
+                    (progress) => {
+                        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                    },
+                    (error) => {
+                        console.error('Error loading model:', error);
+                        URL.revokeObjectURL(url);
+                    }
+                );
             };
             reader.readAsDataURL(file);
         }
