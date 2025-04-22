@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Setup mode buttons
             document.getElementById('translateMode')?.addEventListener('click', () => this.setTransformMode('translate'));
             document.getElementById('rotateMode')?.addEventListener('click', () => this.setTransformMode('rotate'));
-            document.getElementById('scaleMode')?.addEventListener('click', () => this.setTransformMode('scale'));
+            //document.getElementById('scaleMode')?.addEventListener('click', () => this.setTransformMode('scale'));
             document.getElementById('lockObject')?.addEventListener('click', () => this.lockSelectedObject());
             document.getElementById('deleteObject')?.addEventListener('click', () => this.deleteSelectedObject());
             
@@ -300,12 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         
             // Add space toggle buttons
-            document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
-            document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
-        
-            // Add space toggle buttons
-            document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
-            document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
+            //document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
+            //document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
 
             // Add keyboard shortcuts
             window.addEventListener('keydown', (event) => {
@@ -315,15 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
                     case 'r':
                         this.setTransformMode('rotate');
-                        break;
-                    case 's':
-                        this.setTransformMode('scale');
-                        break;
-                    case 'space':
-                        // Toggle between local and world space
-                        const currentSpace = this.transformControls.space;
-                        this.setTransformSpace(currentSpace === 'local' ? 'world' : 'local');
-                        event.preventDefault();
                         break;
                 }
             });

@@ -188,22 +188,46 @@ h4 {
     margin: 15px 0;
 }
 
+.transform-controls,
+.object-actions,
+.precision-controls {
+    margin-bottom: 20px;
+}
+
 .transform-controls button,
+.object-actions button,
 .precision-controls button {
     width: 100%;
     padding: 10px;
     margin: 5px 0;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.3s ease;
     background: #4CAF50;
     color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.transform-controls button:hover,
+.object-actions button:hover,
+.precision-controls button:hover {
+    background: #45a049;
+}
+
+#lockObject {
+    background: #2196F3;
+}
+
+#lockObject:hover {
+    background: #1e87db;
+}
+
+#deleteObject {
+    background: #f44336;
+}
+
+#deleteObject:hover {
+    background: #d32f2f;
 }
 
 .transform-controls button:hover,
