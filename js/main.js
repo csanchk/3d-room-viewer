@@ -34,8 +34,27 @@ document.addEventListener('DOMContentLoaded', () => {
             this.loadSceneState();
             this.lockPopup = null;
             this.lockedObjects = new Set();
+
+            // Load font
+            const fontLoader = new THREE.FontLoader();
+            this.font = null;
+    
+            fontLoader.load(
+                'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
+                (font) => {
+                    this.font = font;
+                    console.log('Font loaded successfully');
+                },
+                (progress) => {
+                    console.log('Font loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                (error) => {
+                    console.error('Error loading font:', error);
+                }
+            );
         }
 
+    
         resetObjectOrientation() {
             if (this.selectedObject) {
                 // Store the original position
@@ -470,23 +489,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const objectPosition = new THREE.Vector3();
             object.getWorldPosition(objectPosition);
             this.lockPopup.position.copy(objectPosition);
-            this.lockPopup.position.y += 1; // Adjust this value as needed
+            this.lockPopup.position.y += 1;
         
-            // Add text to the popup
-            const text = isLocked ? 'Unlock' : 'Lock';
-            const textGeometry = new THREE.TextGeometry(text, {
-                font: /* You need to load a font */,
-                size: 0.05,
-                height: 0.01
-            });
-            const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(-0.1, -0.05, 0.01); // Adjust as needed
-            this.lockPopup.add(textMesh);
+            // Add text to the popup if font is loaded
+            if (this.font) {
+                const text = isLocked ? 'Unlock' : 'Lock';
+                const textGeometry = new THREE.TextGeometry(text, {
+                    font: this.font,
+                    size: 0.05,
+                    height: 0.01
+                });
+                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.set(-0.1, -0.05, 0.01);
+                this.lockPopup.add(textMesh);
+            }
         
             this.scene.add(this.lockPopup);
-        
-            // Add click event to the popup
             this.renderer.domElement.addEventListener('click', this.onPopupClick.bind(this));
         }
         
