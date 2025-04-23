@@ -386,12 +386,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                   
+                
                 raycaster.setFromCamera(mouse, this.camera);
         
                 // First, check if we clicked on the lock popup
                 if (this.lockPopup) {
-                    const popupIntersects = raycaster.intersectObject(this.lockPopup);
+                    const popupIntersects = raycaster.intersectObject(this.lockPopup, true); // Added 'true' for recursive check
                     if (popupIntersects.length > 0) {
                         console.log('Lock popup clicked');
                         this.toggleLock();
@@ -433,14 +433,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Select the object
                         this.selectObject(rootObject);
                         
-                        // Show popup at click position
+                        // Show popup at click position with offset
                         const clickPosition = intersects[0].point;
                         this.showLockPopup(rootObject, this.lockedObjects.has(rootObject.name));
                         this.lockPopup.position.copy(clickPosition);
-                        this.lockPopup.position.y += 0.2; // Slightly above the click point
+                        this.lockPopup.position.y += 0.5; // More offset for larger popup
                         
-                        // Make popup face the camera
-                        this.lockPopup.lookAt(this.camera.position);
+                        // Update popup rotation immediately
+                        this.updatePopupRotation();
                     } else {
                         console.log('No root object found');
                     }
@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle popup visibility when camera moves
             this.orbitControls.addEventListener('change', () => {
                 if (this.lockPopup) {
-                    this.lockPopup.lookAt(this.camera.position);
+                    this.updatePopupRotation();
                 }
             });
         }
@@ -538,48 +538,115 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.scene.remove(this.lockPopup);
             }
         
-            const popupGeometry = new THREE.PlaneGeometry(0.5, 0.2);
+            // Create a larger popup plane
+            const popupGeometry = new THREE.PlaneGeometry(1.5, 0.6); // Increased size
             const popupMaterial = new THREE.MeshBasicMaterial({ 
                 color: 0xffffff,  // White background
                 transparent: true,
-                opacity: 0.9,
-                side: THREE.DoubleSide
+                opacity: 0.95,
+                side: THREE.DoubleSide,
+                depthTest: false
             });
             this.lockPopup = new THREE.Mesh(popupGeometry, popupMaterial);
         
-            // Position the popup near the object (we'll adjust this later)
+            // Create a border for the popup
+            const borderGeometry = new THREE.PlaneGeometry(1.6, 0.7); // Slightly larger than popup
+            const borderMaterial = new THREE.MeshBasicMaterial({
+                color: 0x000000, // Black border
+                side: THREE.DoubleSide,
+                depthTest: false
+            });
+            const border = new THREE.Mesh(borderGeometry, borderMaterial);
+            border.position.set(0, 0, -0.001); // Slightly behind popup
+            this.lockPopup.add(border);
+        
+            // Position the popup
             const objectPosition = new THREE.Vector3();
             object.getWorldPosition(objectPosition);
             this.lockPopup.position.copy(objectPosition);
-            this.lockPopup.position.y += 0.5; // Slightly above the object
+            this.lockPopup.position.y += 0.5;
         
-            // Make sure popup is always visible
-            this.lockPopup.material.depthTest = false;
-            this.lockPopup.renderOrder = 999;
+            // Ensure popup is always on top
+            this.lockPopup.renderOrder = 999999;
         
             // Add text to the popup if font is loaded
             if (this.font) {
-                const text = isLocked ? 'Unlock' : 'Lock';
+                const text = isLocked ? 'UNLOCK' : 'LOCK';
                 const textGeometry = new THREE.TextGeometry(text, {
                     font: this.font,
-                    size: 0.1,  // Increased text size
-                    height: 0.02
+                    size: 0.25, // Much larger text
+                    height: 0.05, // More depth for better visibility
+                    curveSegments: 12,
+                    bevelEnabled: false
                 });
-                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });  // Black text
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                
-                // Center the text on the popup
-                textMesh.position.set(-0.2, -0.05, 0.01);
-                this.lockPopup.add(textMesh);
         
-                textMesh.material.side = THREE.DoubleSide;
+                // Center the text geometry
+                textGeometry.computeBoundingBox();
+                const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
+                const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y;
+        
+                const textMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x000000, // Black text
+                    side: THREE.DoubleSide,
+                    depthTest: false
+                });
+                
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.set(-textWidth/2, -textHeight/2, 0.01);
+                
+                // Create a Group to hold the text and make it always face the camera
+                const textContainer = new THREE.Group();
+                textContainer.add(textMesh);
+                this.lockPopup.add(textContainer);
+        
+                // Tag the text container for animation
+                textContainer.isTextContainer = true;
             } else {
                 console.warn('Font not loaded, popup will not have text');
             }
         
             this.scene.add(this.lockPopup);
-            console.log('Popup added to scene at position:', this.lockPopup.position);
+        
+            // Update the popup's rotation to face the camera
+            this.updatePopupRotation();
         }
+        
+        // Add this new method to handle popup rotation
+        updatePopupRotation() {
+            if (this.lockPopup) {
+                // Make the popup face the camera
+                const lookAtVector = new THREE.Vector3();
+                this.camera.getWorldPosition(lookAtVector);
+                this.lockPopup.lookAt(lookAtVector);
+        
+                // Keep text upright
+                this.lockPopup.children.forEach(child => {
+                    if (child.isTextContainer) {
+                        // Reset rotation of text container
+                        child.rotation.set(0, -this.lockPopup.rotation.y, 0);
+                    }
+                });
+            }
+        }
+        
+        // Update your animate method to include the popup rotation update
+        animate() {
+            requestAnimationFrame(() => this.animate());
+            
+            // Update orbit controls
+            this.orbitControls.update();
+        
+            // Update popup rotation
+            this.updatePopupRotation();
+        
+            // Update transform controls if they exist
+            if (this.transformControls) {
+                this.transformControls.update();
+            }
+        
+            // Render the scene
+            this.renderer.render(this.scene, this.camera);
+        }        
         
         onPopupClick(event) {
             const raycaster = new THREE.Raycaster();
