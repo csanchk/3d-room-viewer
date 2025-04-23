@@ -428,16 +428,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         }
 
-        
-        
         selectObject(object) {
-
+            console.log('Selecting object:', object.name);
+            
             if (this.lockedObjects.has(object.name)) {
                 console.log('Object is locked');
                 this.showLockPopup(object, true);
                 return;
             }
-            console.log('Selecting object:', object.name);
             
             this.selectedObject = object;
             
@@ -452,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Set default to local when selecting an object
             this.setTransformSpace('local'); 
-
+        
             // Attach transform controls
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
@@ -467,9 +465,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
             if (listItem) listItem.classList.add('selected');
         
+            // Show the lock/unlock popup
+            this.showLockPopup(object, false);
+        
             // Save scene state
             this.saveSceneState();
-            this.showLockPopup(object, false);
         }
         
         showLockPopup(object, isLocked) {
@@ -565,17 +565,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     model.name = objectId;
                     model.userData.modelUrl = url;
                     model.userData.selectable = true; // Mark root as selectable
-        
-                    // Calculate bounding box
+                    
+                     // Calculate bounding box
                     const bbox = new THREE.Box3().setFromObject(model);
                     const size = new THREE.Vector3();
                     bbox.getSize(size);
-                    
-                    // Calculate height from bottom of bounding box
-                    const height = size.y / 2;
-        
-                    // Position model in center of room, with bottom exactly on floor
-                    model.position.set(0, height, 0);
+            
+                    // Position model with its bottom on the floor
+                    model.position.set(0, size.y / 2, 0);
         
                     // Add to scene and store reference
                     this.scene.add(model);
