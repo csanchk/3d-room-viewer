@@ -372,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
             this.renderer.domElement.addEventListener('click', (event) => {
+                console.log('Click event triggered');
                 if (this.transformControls.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
@@ -382,10 +383,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 raycaster.setFromCamera(mouse, this.camera);
         
+                // First, check if we clicked on the lock popup
+                if (this.lockPopup) {
+                    const popupIntersects = raycaster.intersectObject(this.lockPopup);
+                    if (popupIntersects.length > 0) {
+                        console.log('Lock popup clicked');
+                        this.toggleLock();
+                        return;
+                    }
+                }
+        
                 // Get all meshes from loaded objects
                 const objectMeshes = [];
                 this.objects.forEach(object => {
-                    console.log('ProProcessing object:', object.name);
+                    console.log('Processing object:', object.name);
                     object.traverse((child) => {
                         if (child.isMesh) {
                             child.userData.rootObject = object; // Store reference to root object
@@ -407,6 +418,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (rootObject) {
                         console.log('Selected root object:', rootObject.name);
+                        // Remove existing popup before selecting new object
+                        if (this.lockPopup) {
+                            this.scene.remove(this.lockPopup);
+                            this.lockPopup = null;
+                        }
                         this.selectObject(rootObject);
                     } else {
                         console.log('No root object found');
@@ -420,13 +436,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (roomIntersects.length > 0) {
                         console.log('Hit room, deselecting');
+                        // Remove popup when deselecting
+                        if (this.lockPopup) {
+                            this.scene.remove(this.lockPopup);
+                            this.lockPopup = null;
+                        }
                         this.deselectObject();
                     }
                 }
             });
         
-        
+            // Add keyboard shortcuts
+            window.addEventListener('keydown', (event) => {
+                switch(event.key.toLowerCase()) {
+                    case 'g':
+                        this.setTransformMode('translate');
+                        break;
+                    case 'r':
+                        this.setTransformMode('rotate');
+                        break;
+                    case 'escape':
+                        if (this.lockPopup) {
+                            this.scene.remove(this.lockPopup);
+                            this.lockPopup = null;
+                        }
+                        break;
+                }
+            });
         }
+        
 
         selectObject(object) {
             console.log('Selecting object:', object.name);
@@ -473,6 +511,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         showLockPopup(object, isLocked) {
+            console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
+        
             if (this.lockPopup) {
                 this.scene.remove(this.lockPopup);
             }
@@ -481,7 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const popupMaterial = new THREE.MeshBasicMaterial({ 
                 color: isLocked ? 0xff0000 : 0x00ff00,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.8,
+                side: THREE.DoubleSide // Make the popup visible from both sides
             });
             this.lockPopup = new THREE.Mesh(popupGeometry, popupMaterial);
         
@@ -489,7 +530,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const objectPosition = new THREE.Vector3();
             object.getWorldPosition(objectPosition);
             this.lockPopup.position.copy(objectPosition);
-            this.lockPopup.position.y += 1;
+            this.lockPopup.position.y += 1; // Adjust this value if needed
+        
+            // Ensure popup faces the camera
+            this.lockPopup.lookAt(this.camera.position);
+        
+            // Make sure popup is always visible
+            this.lockPopup.material.depthTest = false;
+            this.lockPopup.renderOrder = 999;
         
             // Add text to the popup if font is loaded
             if (this.font) {
@@ -501,13 +549,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
                 const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                
+                // Center the text on the popup
                 textMesh.position.set(-0.1, -0.05, 0.01);
                 this.lockPopup.add(textMesh);
+        
+                // Make sure text is visible from both sides
+                textMesh.material.side = THREE.DoubleSide;
+            } else {
+                console.warn('Font not loaded, popup will not have text');
             }
         
             this.scene.add(this.lockPopup);
+        
+            console.log('Popup added to scene at position:', this.lockPopup.position);
+        
+            // Remove any existing click listeners to prevent duplicates
+            this.renderer.domElement.removeEventListener('click', this.onPopupClick);
             this.renderer.domElement.addEventListener('click', this.onPopupClick.bind(this));
+        
+            // Update popup position in animation loop
+            const updatePopupPosition = () => {
+                if (this.lockPopup) {
+                    this.lockPopup.lookAt(this.camera.position);
+                    requestAnimationFrame(updatePopupPosition);
+                }
+            };
+            updatePopupPosition();
         }
+        
         
         onPopupClick(event) {
             const raycaster = new THREE.Raycaster();
@@ -597,8 +667,6 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
          
-        
-
         centerObject(object) {
             // Get the bounding box of the entire object
             const bbox = new THREE.Box3().setFromObject(object);
@@ -827,9 +895,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         animate() {
             requestAnimationFrame(() => this.animate());
+            
+            // Update orbit controls
             this.orbitControls.update();
+        
+            // Update lock popup orientation if it exists
+            if (this.lockPopup) {
+                this.lockPopup.lookAt(this.camera.position);
+                
+                // Update text orientation if it exists
+                this.lockPopup.children.forEach(child => {
+                    if (child.isText) {
+                        child.lookAt(this.camera.position);
+                    }
+                });
+        
+                // Update popup position relative to selected object if one exists
+                if (this.selectedObject) {
+                    const objectPosition = new THREE.Vector3();
+                    this.selectedObject.getWorldPosition(objectPosition);
+                    this.lockPopup.position.copy(objectPosition);
+                    this.lockPopup.position.y += 1; // Keep popup above object
+                }
+            }
+        
+            // Update transform controls if they exist
+            if (this.transformControls) {
+                this.transformControls.update();
+            }
+        
+            // Render the scene
             this.renderer.render(this.scene, this.camera);
-        }
+        }        
 
         saveSceneState() {
             const sceneState = {
