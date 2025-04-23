@@ -52,6 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error loading font:', error);
                 }
             );
+            
+             // Ensure TextGeometry is available
+            if (!THREE.TextGeometry) {
+                console.error('TextGeometry not loaded');
+                return;
+             }
         }
 
     
@@ -486,9 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const worldPos = new THREE.Vector3();
             object.getWorldPosition(worldPos);
             
-            // Set default to local when selecting an object
-            this.setTransformSpace('local'); 
-        
             // Attach transform controls
             this.transformControls.attach(object);
             this.transformControls.setMode(this.transformMode);
@@ -508,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Save scene state
             this.saveSceneState();
-        }
+        }        
         
         showLockPopup(object, isLocked) {
             console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
@@ -612,60 +615,63 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = event.target.files[0];
             if (!file) return;
         
-            console.log('Loading file:', file.name);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const fileData = e.target.result;
+                const url = URL.createObjectURL(file);
+                const objectId = 'object_' + Date.now();
         
-            const url = URL.createObjectURL(file);
-            const objectId = 'object_' + Date.now();
+                const loader = new THREE.GLTFLoader();
+                loader.load(url, 
+                    (gltf) => {
+                        console.log('Model loaded successfully');
+                        const model = gltf.scene;
         
-            const loader = new THREE.GLTFLoader();
-            loader.load(url, 
-                (gltf) => {
-                    console.log('Model loaded successfully');
-                    const model = gltf.scene;
+                        // Setup model properties
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                                child.userData.selectable = true;
+                            }
+                        });
+                        
+                        model.name = objectId;
+                        model.userData.modelUrl = url;
+                        model.userData.fileData = fileData;
+                        model.userData.selectable = true;
         
-                    // Set up model properties
-                    model.traverse((child) => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                            child.userData.selectable = true; // Mark as selectable
-                        }
-                    });
-                    
-                    model.name = objectId;
-                    model.userData.modelUrl = url;
-                    model.userData.selectable = true; // Mark root as selectable
-                    
-                     // Calculate bounding box
-                    const bbox = new THREE.Box3().setFromObject(model);
-                    const size = new THREE.Vector3();
-                    bbox.getSize(size);
-            
-                    // Position model with its bottom on the floor
-                    model.position.set(0, size.y / 2, 0);
+                        // Calculate bounding box
+                        const bbox = new THREE.Box3().setFromObject(model);
+                        const size = new THREE.Vector3();
+                        bbox.getSize(size);
         
-                    // Add to scene and store reference
-                    this.scene.add(model);
-                    this.objects.set(objectId, model);
-                    
-                    console.log('Model added to scene:', objectId);
-                    
-                    // Select the model
-                    this.selectObject(model);
-                    this.updateObjectList();
-                    
-                    // Save scene state after adding new object
-                    this.saveSceneState();
-                },
-                (progress) => {
-                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-                },
-                (error) => {
-                    console.error('Error loading model:', error);
-                    URL.revokeObjectURL(url);
-                }
-            );
-        }
+                        // Position model with its bottom exactly on the floor
+                        const bottomY = bbox.min.y;
+                        model.position.y -= bottomY; // This will place the bottom exactly on the floor
+        
+                        // Add to scene and store reference
+                        this.scene.add(model);
+                        this.objects.set(objectId, model);
+                        
+                        console.log('Model added to scene:', objectId);
+                        this.selectObject(model);
+                        this.updateObjectList();
+                        this.saveSceneState();
+        
+                        URL.revokeObjectURL(url);
+                    },
+                    (progress) => {
+                        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                    },
+                    (error) => {
+                        console.error('Error loading model:', error);
+                        URL.revokeObjectURL(url);
+                    }
+                );
+            };
+            reader.readAsDataURL(file);
+        }        
          
         centerObject(object) {
             // Get the bounding box of the entire object
@@ -822,42 +828,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Log mode change for debugging
             console.log('Transform mode changed to:', mode);
         }
-        
-        
-        
-        selectObject(object) {
-            console.log('Selecting object:', object.name);
-            
-            this.selectedObject = object;
-            
-            // Ensure the object has a modelUrl
-            if (!object.userData.modelUrl) {
-                object.userData.modelUrl = URL.createObjectURL(new Blob()); // Dummy URL
-            }
-            
-            // Ensure transform controls attach to object's center
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
-            
-            // Ensure object is within bounds when selected
-            this.constrainObjectToBounds(object);
-            
-            this.updateObjectList();
-        
-            const listItems = document.querySelectorAll('.object-item');
-            listItems.forEach(item => item.classList.remove('selected'));
-            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) listItem.classList.add('selected');
-        
-            // Save scene state after selection
-            this.saveSceneState();
-        }
-        
-        lockSelectedObject() {
-            if (this.selectedObject) {
-                this.toggleLock();
-            }
-        }
 
         deleteSelectedObject() {
             if (this.selectedObject) {
@@ -993,77 +963,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return new Blob([uInt8Array], { type: contentType });
         }
         
-        handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-        
-            console.log('Loading file:', file.name);
-        
-            // Read file as base64
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const fileData = e.target.result; // This is the base64 data
-                const url = URL.createObjectURL(file);
-                const objectId = 'object_' + Date.now();
-        
-                const loader = new THREE.GLTFLoader();
-                loader.load(url, 
-                    (gltf) => {
-                        console.log('Model loaded successfully');
-                        const model = gltf.scene;
-        
-                        // Set up model properties
-                        model.traverse((child) => {
-                            if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
-                                child.userData.selectable = true; // Mark as selectable
-                            }
-                        });
-                        
-                        model.name = objectId;
-                        model.userData.modelUrl = url;
-                        model.userData.fileData = fileData; // Save the base64 data
-                        model.userData.selectable = true; // Mark root as selectable
-                        this.lockedObjects.delete(model.name); // Ensure new objects start unlocked
-        
-                        // Calculate bounding box
-                        const bbox = new THREE.Box3().setFromObject(model);
-                        const size = new THREE.Vector3();
-                        bbox.getSize(size);
-                        
-                        // Calculate height from bottom of bounding box
-                        const height = size.y / 2;
-        
-                        // Position model in center of room, with bottom exactly on floor
-                        model.position.set(0, height, 0);
-        
-                        // Add to scene and store reference
-                        this.scene.add(model);
-                        this.objects.set(objectId, model);
-                        
-                        console.log('Model added to scene:', objectId);
-                        
-                        // Select the model
-                        this.selectObject(model);
-                        this.updateObjectList();
-                        
-                        // Save scene state after adding new object
-                        this.saveSceneState();
-        
-                        URL.revokeObjectURL(url);
-                    },
-                    (progress) => {
-                        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-                    },
-                    (error) => {
-                        console.error('Error loading model:', error);
-                        URL.revokeObjectURL(url);
-                    }
-                );
-            };
-            reader.readAsDataURL(file);
-        }
         
         loadSavedObject(file, savedData = null, fileData = null) {
             const url = URL.createObjectURL(file);
