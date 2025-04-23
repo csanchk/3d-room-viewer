@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                
+                   
                 raycaster.setFromCamera(mouse, this.camera);
         
                 // First, check if we clicked on the lock popup
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('Processing object:', object.name);
                     object.traverse((child) => {
                         if (child.isMesh) {
-                            child.userData.rootObject = object; // Store reference to root object
+                            child.userData.rootObject = object;
                             objectMeshes.push(child);
                             console.log('Added mesh to raycast targets');
                         }
@@ -429,7 +429,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.scene.remove(this.lockPopup);
                             this.lockPopup = null;
                         }
+                        
+                        // Select the object
                         this.selectObject(rootObject);
+                        
+                        // Show popup at click position
+                        const clickPosition = intersects[0].point;
+                        this.showLockPopup(rootObject, this.lockedObjects.has(rootObject.name));
+                        this.lockPopup.position.copy(clickPosition);
+                        this.lockPopup.position.y += 0.2; // Slightly above the click point
+                        
+                        // Make popup face the camera
+                        this.lockPopup.lookAt(this.camera.position);
                     } else {
                         console.log('No root object found');
                     }
@@ -466,12 +477,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.scene.remove(this.lockPopup);
                             this.lockPopup = null;
                         }
+                        this.deselectObject();
                         break;
                 }
             });
-        }
         
-
+            // Handle popup visibility when camera moves
+            this.orbitControls.addEventListener('change', () => {
+                if (this.lockPopup) {
+                    this.lockPopup.lookAt(this.camera.position);
+                }
+            });
+        }
+    
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
@@ -522,21 +540,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
             const popupGeometry = new THREE.PlaneGeometry(0.5, 0.2);
             const popupMaterial = new THREE.MeshBasicMaterial({ 
-                color: isLocked ? 0xff0000 : 0x00ff00,
+                color: 0xffffff,  // White background
                 transparent: true,
-                opacity: 0.8,
-                side: THREE.DoubleSide // Make the popup visible from both sides
+                opacity: 0.9,
+                side: THREE.DoubleSide
             });
             this.lockPopup = new THREE.Mesh(popupGeometry, popupMaterial);
         
-            // Position the popup near the object
+            // Position the popup near the object (we'll adjust this later)
             const objectPosition = new THREE.Vector3();
             object.getWorldPosition(objectPosition);
             this.lockPopup.position.copy(objectPosition);
-            this.lockPopup.position.y += 1; // Adjust this value if needed
-        
-            // Ensure popup faces the camera
-            this.lockPopup.lookAt(this.camera.position);
+            this.lockPopup.position.y += 0.5; // Slightly above the object
         
             // Make sure popup is always visible
             this.lockPopup.material.depthTest = false;
@@ -547,40 +562,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const text = isLocked ? 'Unlock' : 'Lock';
                 const textGeometry = new THREE.TextGeometry(text, {
                     font: this.font,
-                    size: 0.05,
-                    height: 0.01
+                    size: 0.1,  // Increased text size
+                    height: 0.02
                 });
-                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });  // Black text
                 const textMesh = new THREE.Mesh(textGeometry, textMaterial);
                 
                 // Center the text on the popup
-                textMesh.position.set(-0.1, -0.05, 0.01);
+                textMesh.position.set(-0.2, -0.05, 0.01);
                 this.lockPopup.add(textMesh);
         
-                // Make sure text is visible from both sides
                 textMesh.material.side = THREE.DoubleSide;
             } else {
                 console.warn('Font not loaded, popup will not have text');
             }
         
             this.scene.add(this.lockPopup);
-        
             console.log('Popup added to scene at position:', this.lockPopup.position);
-        
-            // Remove any existing click listeners to prevent duplicates
-            this.renderer.domElement.removeEventListener('click', this.onPopupClick);
-            this.renderer.domElement.addEventListener('click', this.onPopupClick.bind(this));
-        
-            // Update popup position in animation loop
-            const updatePopupPosition = () => {
-                if (this.lockPopup) {
-                    this.lockPopup.lookAt(this.camera.position);
-                    requestAnimationFrame(updatePopupPosition);
-                }
-            };
-            updatePopupPosition();
         }
-        
         
         onPopupClick(event) {
             const raycaster = new THREE.Raycaster();
@@ -609,6 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         
             this.showLockPopup(this.selectedObject, !isLocked);
+            console.log(`Object ${this.selectedObject.name} is now ${!isLocked ? 'locked' : 'unlocked'}`);
         }
         
         handleFileUpload(event) {
