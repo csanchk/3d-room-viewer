@@ -510,9 +510,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const worldPos = new THREE.Vector3();
             object.getWorldPosition(worldPos);
             
-            // Attach transform controls
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
+            // Set default to local when selecting an object
+            this.setTransformSpace('local'); 
+        
+            // Make sure transform controls are attached
+            if (this.transformControls) {
+                this.transformControls.attach(object);
+                this.transformControls.setMode(this.transformMode);
+                
+                // Ensure transform controls are visible and properly configured
+                this.transformControls.showX = true;
+                this.transformControls.showY = true;
+                this.transformControls.showZ = true;
+                this.transformControls.enabled = true;
+                console.log('Transform controls attached to object');
+            } else {
+                console.warn('Transform controls not initialized');
+            }
             
             // Ensure object is within bounds
             this.constrainObjectToBounds(object);
@@ -529,6 +543,41 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Save scene state
             this.saveSceneState();
+        
+            console.log('Object selection complete:', object.name);
+        }
+        
+        deselectObject() {
+            console.log('Deselecting object');
+            if (this.selectedObject) {
+                // Detach transform controls
+                if (this.transformControls) {
+                    this.transformControls.detach();
+                    console.log('Transform controls detached');
+                }
+        
+                // Remove the lock popup if it exists
+                if (this.lockPopup) {
+                    this.scene.remove(this.lockPopup);
+                    this.lockPopup = null;
+                    console.log('Lock popup removed');
+                }
+        
+                // Clear selected object
+                this.selectedObject = null;
+                
+                // Update UI
+                this.updateObjectList();
+                const listItems = document.querySelectorAll('.object-item');
+                listItems.forEach(item => item.classList.remove('selected'));
+        
+                // Save the new state
+                this.saveSceneState();
+        
+                console.log('Object deselection complete');
+            } else {
+                console.log('No object was selected to deselect');
+            }
         }        
         
         showLockPopup(object, isLocked) {
@@ -774,8 +823,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return container;
         }
 
-
-    
         constrainObjectToBounds(object) {
             // Get object's bounding box in world space
             const bbox = new THREE.Box3().setFromObject(object);
@@ -813,20 +860,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        deselectObject() {
-            console.log('Deselecting object');
-            if (this.selectedObject) {
-                this.transformControls.detach();
-                this.selectedObject = null;
-                this.updateObjectList();
-                
-                const listItems = document.querySelectorAll('.object-item');
-                listItems.forEach(item => item.classList.remove('selected'));
-            }
-            this.saveSceneState();
-        }
-        
-
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
