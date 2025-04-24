@@ -493,12 +493,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
-            if (this.lockedObjects.has(object.name)) {
-                console.log('Object is locked');
-                this.showLockPopup(object, true);
-                return;
-            }
-            
             this.selectedObject = object;
             
             // Ensure the object has a modelUrl
@@ -510,9 +504,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const worldPos = new THREE.Vector3();
             object.getWorldPosition(worldPos);
             
-            // Attach transform controls
-            this.transformControls.attach(object);
-            this.transformControls.setMode(this.transformMode);
+            // Only attach transform controls if the object is not locked
+            if (!this.lockedObjects.has(object.name)) {
+                this.transformControls.attach(object);
+                this.transformControls.setMode(this.transformMode);
+            } else {
+                this.transformControls.detach();
+            }
             
             // Ensure object is within bounds
             this.constrainObjectToBounds(object);
@@ -525,11 +523,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (listItem) listItem.classList.add('selected');
         
             // Show the lock/unlock popup
-            this.showLockPopup(object, false);
+            this.showLockPopup(object, this.lockedObjects.has(object.name));
         
             // Save scene state
             this.saveSceneState();
-        }        
+        }                
         
         showLockPopup(object, isLocked) {
             console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
