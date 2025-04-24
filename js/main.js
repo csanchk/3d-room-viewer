@@ -496,23 +496,36 @@ document.addEventListener('DOMContentLoaded', () => {
             object.getWorldPosition(worldPos);
             
             if (!this.lockedObjects.has(object.name)) {
-                // Set up transform controls
-                this.transformControls.attach(object);
-                
-                // Enable both translation and rotation
-                this.transformControls.setMode('translate');
-                this.transformControls.showX = true;
-                this.transformControls.showY = true;
-                this.transformControls.showZ = true;
-                this.transformControls.enabled = true;
-                
-                // Enable rotation axes
-                this.transformControls.setRotationSnap(null);
-                this.transformControls.showRotationAxes = true;
-            } else {
+                // Detach existing controls if any
                 this.transformControls.detach();
+        
+                // Create separate controls for translation and rotation
+                if (!this.translateControls) {
+                    this.translateControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+                    this.translateControls.setMode('translate');
+                    this.scene.add(this.translateControls);
+                }
+                if (!this.rotateControls) {
+                    this.rotateControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+                    this.rotateControls.setMode('rotate');
+                    this.scene.add(this.rotateControls);
+                }
+        
+                // Attach both controls to the object
+                this.translateControls.attach(object);
+                this.rotateControls.attach(object);
+        
+                // Set size and show all axes for both controls
+                this.translateControls.setSize(0.7);
+                this.rotateControls.setSize(0.7);
+                this.translateControls.showX = this.translateControls.showY = this.translateControls.showZ = true;
+                this.rotateControls.showX = this.rotateControls.showY = this.rotateControls.showZ = true;
+        
+                console.log('Translation and rotation controls attached');
+            } else {
+                if (this.translateControls) this.translateControls.detach();
+                if (this.rotateControls) this.rotateControls.detach();
             }
-            
             
             // Ensure object is within bounds
             this.constrainObjectToBounds(object);
@@ -529,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Save scene state
             this.saveSceneState();
-        }                       
+        }                               
         
         showLockPopup(object, isLocked) {
             console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
@@ -816,7 +829,8 @@ document.addEventListener('DOMContentLoaded', () => {
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
-                this.transformControls.detach();
+                if (this.translateControls) this.translateControls.detach();
+                if (this.rotateControls) this.rotateControls.detach();
                 this.selectedObject = null;
                 this.updateObjectList();
                 
@@ -915,34 +929,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update orbit controls
             this.orbitControls.update();
         
-            // Update lock popup orientation if it exists
-            if (this.lockPopup) {
-                this.lockPopup.lookAt(this.camera.position);
-                
-                // Update text orientation if it exists
-                this.lockPopup.children.forEach(child => {
-                    if (child.isText) {
-                        child.lookAt(this.camera.position);
-                    }
-                });
-        
-                // Update popup position relative to selected object if one exists
-                if (this.selectedObject) {
-                    const objectPosition = new THREE.Vector3();
-                    this.selectedObject.getWorldPosition(objectPosition);
-                    this.lockPopup.position.copy(objectPosition);
-                    this.lockPopup.position.y += 1; // Keep popup above object
-                }
-            }
+            // Update popup rotation
+            this.updatePopupRotation();
         
             // Update transform controls if they exist
-            if (this.transformControls) {
-                this.transformControls.update();
+            if (this.translateControls) {
+                this.translateControls.update();
+            }
+            if (this.rotateControls) {
+                this.rotateControls.update();
             }
         
             // Render the scene
             this.renderer.render(this.scene, this.camera);
-        }        
+        }              
 
         saveSceneState() {
             const sceneState = {
