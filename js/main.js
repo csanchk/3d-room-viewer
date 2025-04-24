@@ -376,6 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selectObject(object) {
             console.log('Selecting object:', object.name);
+            console.log('Starting object selection...');
+            console.log('Transform controls exist:', !!this.transformControls);
+            console.log('Object to select:', object);
+            console.log('Current selected object:', this.selectedObject);
             
             if (this.lockedObjects.has(object.name)) {
                 console.log('Object is locked');
@@ -1151,18 +1155,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     URL.revokeObjectURL(url);
                 }
             );
-        }
-        
-        
-    
-        loadSceneState() {
-            const savedState = localStorage.getItem('sceneState');
-            if (savedState) {
-                const sceneState = JSON.parse(savedState);
-                sceneState.objects.forEach(objData => {
-                    this.loadModelFromUrl(objData.modmodelUrl, objData);
-                });
-            }
         }
         
         loadModelFromUrl(url, objData) {
