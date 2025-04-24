@@ -498,19 +498,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!this.lockedObjects.has(object.name)) {
                 // Set up transform controls
                 this.transformControls.attach(object);
-                this.transformControls.setMode('translate');
                 
-                // Show all control axes
+                // Enable both translation and rotation
+                this.transformControls.setMode('translate');
                 this.transformControls.showX = true;
                 this.transformControls.showY = true;
                 this.transformControls.showZ = true;
+                this.transformControls.enabled = true;
                 
-                // Enable rotation controls
+                // Enable rotation axes
                 this.transformControls.setRotationSnap(null);
                 this.transformControls.showRotationAxes = true;
             } else {
                 this.transformControls.detach();
             }
+            
             
             // Ensure object is within bounds
             this.constrainObjectToBounds(object);
