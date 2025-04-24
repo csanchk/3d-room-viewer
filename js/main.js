@@ -374,100 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('bringToFloor')?.addEventListener('click', () => this.bringObjectToFloor());
         }
 
-        selectObject(object) {
-            console.log('Selecting object:', object.name);
-            console.log('Starting object selection...');
-            console.log('Transform controls exist:', !!this.transformControls);
-            console.log('Object to select:', object);
-            console.log('Current selected object:', this.selectedObject);
-            
-            if (this.lockedObjects.has(object.name)) {
-                console.log('Object is locked');
-                this.showLockPopup(object, true);
-                return;
-            }
-            
-            this.selectedObject = object;
-            
-            // Ensure the object has a modelUrl
-            if (!object.userData.modelUrl) {
-                object.userData.modelUrl = URL.createObjectURL(new Blob());
-            }
-        
-            // Calculate object's world position
-            const worldPos = new THREE.Vector3();
-            object.getWorldPosition(worldPos);
-            
-            // Set default to local when selecting an object
-            this.setTransformSpace('local'); 
-        
-            // Make sure transform controls are attached
-            if (this.transformControls) {
-                this.transformControls.attach(object);
-                this.transformControls.setMode(this.transformMode);
-                
-                // Ensure transform controls are visible and properly configured
-                this.transformControls.showX = true;
-                this.transformControls.showY = true;
-                this.transformControls.showZ = true;
-                this.transformControls.enabled = true;
-                console.log('Transform controls attached to object');
-            } else {
-                console.warn('Transform controls not initialized');
-            }
-            
-            // Ensure object is within bounds
-            this.constrainObjectToBounds(object);
-            
-            this.updateObjectList();
-        
-            const listItems = document.querySelectorAll('.object-item');
-            listItems.forEach(item => item.classList.remove('selected'));
-            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
-            if (listItem) listItem.classList.add('selected');
-        
-            // Show the lock/unlock popup
-            this.showLockPopup(object, false);
-        
-            // Save scene state
-            this.saveSceneState();
-        
-            console.log('Object selection complete:', object.name);
-        }
-        
-        deselectObject() {
-            console.log('Deselecting object');
-            if (this.selectedObject) {
-                // Detach transform controls
-                if (this.transformControls) {
-                    this.transformControls.detach();
-                    console.log('Transform controls detached');
-                }
-        
-                // Remove the lock popup if it exists
-                if (this.lockPopup) {
-                    this.scene.remove(this.lockPopup);
-                    this.lockPopup = null;
-                    console.log('Lock popup removed');
-                }
-        
-                // Clear selected object
-                this.selectedObject = null;
-                
-                // Update UI
-                this.updateObjectList();
-                const listItems = document.querySelectorAll('.object-item');
-                listItems.forEach(item => item.classList.remove('selected'));
-        
-                // Save the new state
-                this.saveSceneState();
-        
-                console.log('Object deselection complete');
-            } else {
-                console.log('No object was selected to deselect');
-            }
-        } 
-
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
@@ -582,7 +488,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.updatePopupRotation();
                 }
             });
-        }                      
+        }
+    
+        selectObject(object) {
+            console.log('Selecting object:', object.name);
+            
+            if (this.lockedObjects.has(object.name)) {
+                console.log('Object is locked');
+                this.showLockPopup(object, true);
+                return;
+            }
+            
+            this.selectedObject = object;
+            
+            // Ensure the object has a modelUrl
+            if (!object.userData.modelUrl) {
+                object.userData.modelUrl = URL.createObjectURL(new Blob());
+            }
+        
+            // Calculate object's world position
+            const worldPos = new THREE.Vector3();
+            object.getWorldPosition(worldPos);
+            
+            // Attach transform controls
+            this.transformControls.attach(object);
+            this.transformControls.setMode(this.transformMode);
+            
+            // Ensure object is within bounds
+            this.constrainObjectToBounds(object);
+            
+            this.updateObjectList();
+        
+            const listItems = document.querySelectorAll('.object-item');
+            listItems.forEach(item => item.classList.remove('selected'));
+            const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
+            if (listItem) listItem.classList.add('selected');
+        
+            // Show the lock/unlock popup
+            this.showLockPopup(object, false);
+        
+            // Save scene state
+            this.saveSceneState();
+        }        
         
         showLockPopup(object, isLocked) {
             console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
@@ -827,6 +774,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return container;
         }
 
+
+    
         constrainObjectToBounds(object) {
             // Get object's bounding box in world space
             const bbox = new THREE.Box3().setFromObject(object);
@@ -864,6 +813,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        deselectObject() {
+            console.log('Deselecting object');
+            if (this.selectedObject) {
+                this.transformControls.detach();
+                this.selectedObject = null;
+                this.updateObjectList();
+                
+                const listItems = document.querySelectorAll('.object-item');
+                listItems.forEach(item => item.classList.remove('selected'));
+            }
+            this.saveSceneState();
+        }
+        
+
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
@@ -1155,6 +1118,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     URL.revokeObjectURL(url);
                 }
             );
+        }
+        
+        
+    
+        loadSceneState() {
+            const savedState = localStorage.getItem('sceneState');
+            if (savedState) {
+                const sceneState = JSON.parse(savedState);
+                sceneState.objects.forEach(objData => {
+                    this.loadModelFromUrl(objData.modmodelUrl, objData);
+                });
+            }
         }
         
         loadModelFromUrl(url, objData) {
