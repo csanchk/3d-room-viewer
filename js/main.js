@@ -377,14 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
             
-            // Prevent default right-click menu
-            this.renderer.domElement.addEventListener('contextmenu', (event) => {
-                event.preventDefault();
-            });
-            
-            // Change to right-click (contextmenu) event
-            this.renderer.domElement.addEventListener('contextmenu', (event) => {
-                console.log('Right click event triggered');
+            this.renderer.domElement.addEventListener('click', (event) => {
+                console.log('Click event triggered');
                 if (this.transformControls.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
@@ -397,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
                 // First, check if we clicked on the lock popup
                 if (this.lockPopup) {
-                    const popupIntersects = raycaster.intersectObject(this.lockPopup, true);
+                    const popupIntersects = raycaster.intersectObject(this.lockPopup, true); // Added 'true' for recursive check
                     if (popupIntersects.length > 0) {
                         console.log('Lock popup clicked');
                         this.toggleLock();
@@ -430,25 +424,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (rootObject) {
                         console.log('Selected root object:', rootObject.name);
-                        // Always remove existing popup
+                        // Remove existing popup before selecting new object
                         if (this.lockPopup) {
                             this.scene.remove(this.lockPopup);
                             this.lockPopup = null;
                         }
                         
+                        // Select the object
+                        this.selectObject(rootObject);
+                        
                         // Show popup at click position with offset
                         const clickPosition = intersects[0].point;
                         this.showLockPopup(rootObject, this.lockedObjects.has(rootObject.name));
                         this.lockPopup.position.copy(clickPosition);
-                        this.lockPopup.position.y += 0.5;
+                        this.lockPopup.position.y += 0.5; // More offset for larger popup
                         
                         // Update popup rotation immediately
                         this.updatePopupRotation();
-                        
-                        // Only select the object if it's not already selected
-                        if (this.selectedObject !== rootObject) {
-                            this.selectObject(rootObject);
-                        }
                     } else {
                         console.log('No root object found');
                     }
@@ -466,50 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.scene.remove(this.lockPopup);
                             this.lockPopup = null;
                         }
-                        this.deselectObject();
-                    }
-                }
-            });
-        
-            // Add regular left-click for selection without showing popup
-            this.renderer.domElement.addEventListener('click', (event) => {
-                if (this.transformControls.dragging) return;
-                
-                const raycaster = new THREE.Raycaster();
-                const mouse = new THREE.Vector2();
-                
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                
-                raycaster.setFromCamera(mouse, this.camera);
-        
-                const objectMeshes = [];
-                this.objects.forEach(object => {
-                    object.traverse((child) => {
-                        if (child.isMesh) {
-                            child.userData.rootObject = object;
-                            objectMeshes.push(child);
-                        }
-                    });
-                });
-        
-                const intersects = raycaster.intersectObjects(objectMeshes, false);
-        
-                if (intersects.length > 0) {
-                    const hitObject = intersects[0].object;
-                    const rootObject = hitObject.userData.rootObject;
-                    
-                    if (rootObject) {
-                        // Just select the object without showing popup
-                        this.selectObject(rootObject);
-                    }
-                } else {
-                    const roomParts = [this.floor, ...this.scene.children.filter(child => 
-                        child.isMesh && !this.objects.has(child.name))];
-                    
-                    const roomIntersects = raycaster.intersectObjects(roomParts, false);
-                    
-                    if (roomIntersects.length > 0) {
                         this.deselectObject();
                     }
                 }
@@ -540,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.updatePopupRotation();
                 }
             });
-        }        
+        }               
     
         selectObject(object) {
             console.log('Selecting object:', object.name);
