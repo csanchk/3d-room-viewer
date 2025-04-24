@@ -313,10 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.scene.add(fillLight);
         }
         setupControls() {
-            // Setup mode buttons
+            // Remove rotate mode listener
             document.getElementById('translateMode')?.addEventListener('click', () => this.setTransformMode('translate'));
-            document.getElementById('rotateMode')?.addEventListener('click', () => this.setTransformMode('rotate'));
-            //document.getElementById('scaleMode')?.addEventListener('click', () => this.setTransformMode('scale'));
             document.getElementById('lockObject')?.addEventListener('click', () => this.lockSelectedObject());
             document.getElementById('deleteObject')?.addEventListener('click', () => this.deleteSelectedObject());
             
@@ -326,19 +324,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 uploadElement.addEventListener('change', (e) => this.handleFileUpload(e));
             }
         
-            // Add space toggle buttons
-            //document.getElementById('localSpace')?.addEventListener('click', () => this.setTransformSpace('local'));
-            //document.getElementById('globalSpace')?.addEventListener('click', () => this.setTransformSpace('world'));
-
-            // Add keyboard shortcuts
+            // Remove keyboard shortcuts for rotate
             window.addEventListener('keydown', (event) => {
-                switch(event.key.toLowerCase()) {
-                    case 'g':
-                        this.setTransformMode('translate');
-                        break;
-                    case 'r':
-                        this.setTransformMode('rotate');
-                        break;
+                if (event.key.toLowerCase() === 'g') {
+                    this.setTransformMode('translate');
                 }
             });
         
@@ -353,9 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (e.target.checked) {
                         snapSettings.style.display = 'block';
                         this.transformControls.setTranslationSnap(parseFloat(snapValue.value));
+                        this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15));
                     } else {
                         snapSettings.style.display = 'none';
                         this.transformControls.setTranslationSnap(null);
+                        this.transformControls.setRotationSnap(null);
                     }
                 });
             }
@@ -369,10 +360,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
-
+        
             document.getElementById('resetOrientation')?.addEventListener('click', () => this.resetObjectOrientation());
             document.getElementById('bringToFloor')?.addEventListener('click', () => this.bringObjectToFloor());
-        }
+        }        
 
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
@@ -504,10 +495,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const worldPos = new THREE.Vector3();
             object.getWorldPosition(worldPos);
             
-            // Only attach transform controls if the object is not locked
             if (!this.lockedObjects.has(object.name)) {
+                // Set up transform controls
                 this.transformControls.attach(object);
-                this.transformControls.setMode(this.transformMode);
+                this.transformControls.setMode('translate');
+                
+                // Show all control axes
+                this.transformControls.showX = true;
+                this.transformControls.showY = true;
+                this.transformControls.showZ = true;
+                
+                // Enable rotation controls
+                this.transformControls.setRotationSnap(null);
+                this.transformControls.showRotationAxes = true;
             } else {
                 this.transformControls.detach();
             }
@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Save scene state
             this.saveSceneState();
-        }                
+        }                       
         
         showLockPopup(object, isLocked) {
             console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
@@ -824,36 +824,19 @@ document.addEventListener('DOMContentLoaded', () => {
             this.saveSceneState();
         }
         
-
         setTransformMode(mode) {
             this.transformMode = mode;
             if (this.selectedObject) {
                 this.transformControls.setMode(mode);
                 this.transformControls.setSpace('local');
         
-                // Hide rotation axis
-                if (mode === 'rotate') {
-                    this.transformControls.showX = false;
-                    this.transformControls.showY = false;
-                    this.transformControls.showZ = false;
-                } else {
-                    this.transformControls.showX = true;
-                    this.transformControls.showY = true;
-                    this.transformControls.showZ = true;
-                }
+                // Show all axes
+                this.transformControls.showX = true;
+                this.transformControls.showY = true;
+                this.transformControls.showZ = true;
         
-                // Customize the appearance based on mode
-                switch(mode) {
-                    case 'translate':
-                        this.transformControls.setSize(0.75);
-                        break;
-                    case 'rotate':
-                        this.transformControls.setSize(1); // Slightly larger for rotation handles
-                        break;
-                    case 'scale':
-                        this.transformControls.setSize(0.65); // Slightly smaller for scale handles
-                        break;
-                }
+                // Set size for combined controls
+                this.transformControls.setSize(0.75);
         
                 // Update transform controls appearance
                 this.transformControls.traverse((child) => {
@@ -867,20 +850,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             child.material.color.setHex(0x0000ff); // Blue for Z
                         }
                         
-                        // Enhance visibility
-                        child.material.opacity = mode === 'rotate' ? 0 : 0.85;
+                        child.material.opacity = 0.85;
                         child.material.transparent = true;
                     }
                 });
             }
             
             // Update UI buttons
-            ['translateMode', 'rotateMode', 'scaleMode'].forEach(buttonId => {
-                const button = document.getElementById(buttonId);
-                if (button) {
-                    button.classList.toggle('active', buttonId.includes(mode));
-                }
-            });
+            const translateButton = document.getElementById('translateMode');
+            if (translateButton) {
+                translateButton.classList.toggle('active', mode === 'translate');
+            }
         
             // Update control state
             if (this.selectedObject) {
@@ -890,7 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.constrainObjectToBounds(this.selectedObject);
             }
         
-            // Log mode change for debugging
             console.log('Transform mode changed to:', mode);
         }
 
