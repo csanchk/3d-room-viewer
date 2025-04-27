@@ -34,9 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.loadSceneState();
             this.lockPopup = null;
             this.lockedObjects = new Set();
-            this.currentMode = 'translate';
+            this.currentMode = null;
             this.modeListenersAdded = false;
-            this.currentMode = null; // Add this line
 
             // Load font
             const fontLoader = new THREE.FontLoader();
