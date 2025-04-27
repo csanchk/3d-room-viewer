@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.loadSceneState();
             this.lockPopup = null;
             this.lockedObjects = new Set();
+            this.currentMode = 'translate';
+            this.modeListenersAdded = false;
 
             // Load font
             const fontLoader = new THREE.FontLoader();
@@ -538,13 +540,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.translateControls.detach();
                 this.rotateControls.detach();
         
-                // Attach controls to the new object
-                this.translateControls.attach(object);
-                this.rotateControls.attach(object);
+                // By default, start with translate mode
+                this.currentMode = this.currentMode || 'translate';
         
-                // Make controls visible
-                this.translateControls.visible = true;
-                this.rotateControls.visible = true;
+                if (this.currentMode === 'translate') {
+                    // Show only translation controls
+                    this.translateControls.visible = true;
+                    this.rotateControls.visible = false;
+                    this.translateControls.attach(object);
+                } else {
+                    // Show only rotation controls
+                    this.translateControls.visible = false;
+                    this.rotateControls.visible = true;
+                    this.rotateControls.attach(object);
+                }
         
                 // Configure controls visibility and properties
                 this.translateControls.showX = true;
@@ -566,7 +575,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Make sure orbit controls are enabled initially
                 this.orbitControls.enabled = true;
         
-                console.log('Translation and rotation controls attached');
+                console.log(`Controls attached in ${this.currentMode} mode`);
+        
+                // Add key listeners for switching modes
+                if (!this.modeListenersAdded) {
+                    window.addEventListener('keydown', (event) => {
+                        if (this.selectedObject && !this.lockedObjects.has(this.selectedObject.name)) {
+                            if (event.key.toLowerCase() === 'g') {
+                                this.setTranslateMode();
+                            } else if (event.key.toLowerCase() === 'r') {
+                                this.setRotateMode();
+                            }
+                        }
+                    });
+                    this.modeListenersAdded = true;
+                }
+        
             } else {
                 // If object is locked, detach all controls
                 this.translateControls.detach();
@@ -591,8 +615,30 @@ document.addEventListener('DOMContentLoaded', () => {
             // Save scene state
             this.saveSceneState();
         
-            // Log selection completion
             console.log('Object selection complete:', object.name);
+        }
+        
+        // Add these helper methods to your class
+        setTranslateMode() {
+            this.currentMode = 'translate';
+            if (this.selectedObject) {
+                this.translateControls.visible = true;
+                this.rotateControls.visible = false;
+                this.rotateControls.detach();
+                this.translateControls.attach(this.selectedObject);
+            }
+            console.log('Switched to translate mode');
+        }
+        
+        setRotateMode() {
+            this.currentMode = 'rotate';
+            if (this.selectedObject) {
+                this.translateControls.visible = false;
+                this.rotateControls.visible = true;
+                this.translateControls.detach();
+                this.rotateControls.attach(this.selectedObject);
+            }
+            console.log('Switched to rotate mode');
         }                                         
         
         showLockPopup(object, isLocked) {
@@ -1184,7 +1230,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
-        
+
         loadModelFromUrl(url, objData) {
             const loader = new THREE.GLTFLoader();
             
