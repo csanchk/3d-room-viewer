@@ -534,42 +534,52 @@ document.addEventListener('DOMContentLoaded', () => {
             object.getWorldPosition(worldPos);
             
             if (!this.lockedObjects.has(object.name)) {
-                // Detach existing controls if any
-                this.transformControls.detach();
+                // Detach any existing controls
+                this.translateControls.detach();
+                this.rotateControls.detach();
         
-                // Create separate controls for translation and rotation
-                if (!this.translateControls) {
-                    this.translateControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-                    this.translateControls.setMode('translate');
-                    this.scene.add(this.translateControls);
-                }
-                if (!this.rotateControls) {
-                    this.rotateControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-                    this.rotateControls.setMode('rotate');
-                    this.scene.add(this.rotateControls);
-                }
-        
-                // Attach both controls to the object
+                // Attach controls to the new object
                 this.translateControls.attach(object);
                 this.rotateControls.attach(object);
         
-                // Set size and show all axes for both controls
+                // Make controls visible
+                this.translateControls.visible = true;
+                this.rotateControls.visible = true;
+        
+                // Configure controls visibility and properties
+                this.translateControls.showX = true;
+                this.translateControls.showY = true;
+                this.translateControls.showZ = true;
+                
+                this.rotateControls.showX = true;
+                this.rotateControls.showY = true;
+                this.rotateControls.showZ = true;
+        
+                // Set control sizes
                 this.translateControls.setSize(0.7);
                 this.rotateControls.setSize(0.7);
-                this.translateControls.showX = this.translateControls.showY = this.translateControls.showZ = true;
-                this.rotateControls.showX = this.rotateControls.showY = this.rotateControls.showZ = true;
+        
+                // Position controls
+                this.translateControls.position.copy(object.position);
+                this.rotateControls.position.copy(object.position);
+        
+                // Make sure orbit controls are enabled initially
+                this.orbitControls.enabled = true;
         
                 console.log('Translation and rotation controls attached');
             } else {
-                if (this.translateControls) this.translateControls.detach();
-                if (this.rotateControls) this.rotateControls.detach();
+                // If object is locked, detach all controls
+                this.translateControls.detach();
+                this.rotateControls.detach();
+                this.translateControls.visible = false;
+                this.rotateControls.visible = false;
             }
             
             // Ensure object is within bounds
             this.constrainObjectToBounds(object);
             
+            // Update UI
             this.updateObjectList();
-        
             const listItems = document.querySelectorAll('.object-item');
             listItems.forEach(item => item.classList.remove('selected'));
             const listItem = document.querySelector(`[data-object-id="${object.name}"]`);
@@ -580,7 +590,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Save scene state
             this.saveSceneState();
-        }                               
+        
+            // Log selection completion
+            console.log('Object selection complete:', object.name);
+        }                                         
         
         showLockPopup(object, isLocked) {
             console.log('Showing lock popup:', isLocked ? 'locked' : 'unlocked');
@@ -867,16 +880,39 @@ document.addEventListener('DOMContentLoaded', () => {
         deselectObject() {
             console.log('Deselecting object');
             if (this.selectedObject) {
-                if (this.translateControls) this.translateControls.detach();
-                if (this.rotateControls) this.rotateControls.detach();
+                // Detach and hide translation controls
+                if (this.translateControls) {
+                    this.translateControls.detach();
+                    this.translateControls.visible = false;
+                }
+        
+                // Detach and hide rotation controls
+                if (this.rotateControls) {
+                    this.rotateControls.detach();
+                    this.rotateControls.visible = false;
+                }
+        
+                // Remove any lock popup
+                if (this.lockPopup) {
+                    this.scene.remove(this.lockPopup);
+                    this.lockPopup = null;
+                }
+        
+                // Clear selected object
                 this.selectedObject = null;
-                this.updateObjectList();
                 
+                // Update UI
+                this.updateObjectList();
                 const listItems = document.querySelectorAll('.object-item');
                 listItems.forEach(item => item.classList.remove('selected'));
+                
+                // Re-enable orbit controls
+                this.orbitControls.enabled = true;
+        
+                console.log('Object deselection complete');
             }
             this.saveSceneState();
-        }
+        }        
         
         setTransformMode(mode) {
             this.transformMode = mode;
