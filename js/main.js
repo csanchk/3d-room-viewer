@@ -129,44 +129,78 @@ document.addEventListener('DOMContentLoaded', () => {
             this.orbitControls.enableDamping = true;
             this.orbitControls.dampingFactor = 0.05;
         
-            // Transform controls
-            this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
-            this.transformControls.setSize(0.75);
+            // Transform controls for translation and rotation
+            this.translateControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+            this.rotateControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+            
+            // Set modes
+            this.translateControls.setMode('translate');
+            this.rotateControls.setMode('rotate');
+            
+            // Add to scene
+            this.scene.add(this.translateControls);
+            this.scene.add(this.rotateControls);
+        
+            // Configure controls
+            this.translateControls.setSize(0.7);
+            this.rotateControls.setSize(0.7);
             
             // Remove snapping for smoother movement
-            this.transformControls.setTranslationSnap(null);
-            this.transformControls.setRotationSnap(null);
-            this.scene.add(this.transformControls);
+            this.translateControls.setTranslationSnap(null);
+            this.rotateControls.setRotationSnap(null);
         
-            // Transform controls events
-            this.transformControls.addEventListener('dragging-changed', (event) => {
+            // Transform controls events for translation
+            this.translateControls.addEventListener('dragging-changed', (event) => {
+                this.orbitControls.enabled = !event.value;
+            });
+        
+            // Transform controls events for rotation
+            this.rotateControls.addEventListener('dragging-changed', (event) => {
                 this.orbitControls.enabled = !event.value;
             });
         
             // Add real-time constraint checking during transform
-            this.transformControls.addEventListener('change', () => {
+            this.translateControls.addEventListener('change', () => {
                 if (this.selectedObject) {
-                    // Store current position
                     const currentPos = this.selectedObject.position.clone();
-                    
-                    // Apply constraints
                     this.constrainObjectToBounds(this.selectedObject);
-                    
-                    // If position was constrained, update transform controls
                     if (!this.selectedObject.position.equals(currentPos)) {
-                        this.transformControls.update();
+                        this.translateControls.update();
+                    }
+                }
+            });
+        
+            this.rotateControls.addEventListener('change', () => {
+                if (this.selectedObject) {
+                    const currentPos = this.selectedObject.position.clone();
+                    this.constrainObjectToBounds(this.selectedObject);
+                    if (!this.selectedObject.position.equals(currentPos)) {
+                        this.rotateControls.update();
                     }
                 }
             });
         
             // Add mouse/touch event listeners for continuous constraint checking
-            this.transformControls.addEventListener('mouseMove', () => {
+            this.translateControls.addEventListener('mouseMove', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
                 }
             });
         
-            this.transformControls.addEventListener('objectChange', () => {
+            this.rotateControls.addEventListener('mouseMove', () => {
+                if (this.selectedObject) {
+                    this.constrainObjectToBounds(this.selectedObject);
+                }
+            });
+        
+            // Object change event listeners
+            this.translateControls.addEventListener('objectChange', () => {
+                if (this.selectedObject) {
+                    this.constrainObjectToBounds(this.selectedObject);
+                }
+            });
+        
+            this.rotateControls.addEventListener('objectChange', () => {
                 if (this.selectedObject) {
                     this.constrainObjectToBounds(this.selectedObject);
                 }
@@ -175,18 +209,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add precision mode with shift key
             window.addEventListener('keydown', (event) => {
                 if (event.key === 'Shift') {
-                    this.transformControls.setTranslationSnap(0.1);
-                    this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(5));
+                    this.translateControls.setTranslationSnap(0.1);
+                    this.rotateControls.setRotationSnap(THREE.MathUtils.degToRad(5));
                 }
             });
         
             window.addEventListener('keyup', (event) => {
                 if (event.key === 'Shift') {
-                    this.transformControls.setTranslationSnap(null);
-                    this.transformControls.setRotationSnap(null);
+                    this.translateControls.setTranslationSnap(null);
+                    this.rotateControls.setRotationSnap(null);
                 }
             });
-        }
+        
+            // Set initial visibility
+            this.translateControls.visible = false;
+            this.rotateControls.visible = false;
+        }        
         
         constrainObjectToBounds(object) {
             // Get object's bounding box
