@@ -287,6 +287,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         createRoom() {
+            // Setup mode buttons
+            document.getElementById('translateMode')?.addEventListener('click', () => {
+                this.setTranslateMode();
+                // Update button states
+                document.getElementById('translateMode').classList.add('active');
+                document.getElementById('rotateMode').classList.remove('active');
+            });
+    
+            document.getElementById('rotateMode')?.addEventListener('click', () => {
+                this.setRotateMode();
+                // Update button states
+                document.getElementById('translateMode').classList.remove('active');
+                document.getElementById('rotateMode').classList.add('active');
+            });
+            
             // Floor
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
             const floorMaterial = new THREE.MeshStandardMaterial({ 
