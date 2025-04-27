@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.lockedObjects = new Set();
             this.currentMode = 'translate';
             this.modeListenersAdded = false;
+            this.currentMode = null; // Add this line
 
             // Load font
             const fontLoader = new THREE.FontLoader();
@@ -367,9 +368,36 @@ document.addEventListener('DOMContentLoaded', () => {
             fillLight.position.set(-5, 5, -5);
             this.scene.add(fillLight);
         }
+        
         setupControls() {
-            // Remove rotate mode listener
-            document.getElementById('translateMode')?.addEventListener('click', () => this.setTransformMode('translate'));
+            // Setup mode buttons
+            document.getElementById('translateMode')?.addEventListener('click', () => {
+                if (this.currentMode === 'translate') {
+                    // If translate is already active, disable it
+                    this.disableTransformControls();
+                } else {
+                    // Enable translate mode
+                    this.setTranslateMode();
+                    // Update button states
+                    document.getElementById('translateMode').classList.add('active');
+                    document.getElementById('rotateMode').classList.remove('active');
+                }
+            });
+            
+            document.getElementById('rotateMode')?.addEventListener('click', () => {
+                if (this.currentMode === 'rotate') {
+                    // If rotate is already active, disable it
+                    this.disableTransformControls();
+                } else {
+                    // Enable rotate mode
+                    this.setRotateMode();
+                    // Update button states
+                    document.getElementById('translateMode').classList.remove('active');
+                    document.getElementById('rotateMode').classList.add('active');
+                }
+            });
+        
+            // Other control buttons
             document.getElementById('lockObject')?.addEventListener('click', () => this.lockSelectedObject());
             document.getElementById('deleteObject')?.addEventListener('click', () => this.deleteSelectedObject());
             
@@ -379,10 +407,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 uploadElement.addEventListener('change', (e) => this.handleFileUpload(e));
             }
         
-            // Remove keyboard shortcuts for rotate
+            // Keyboard shortcuts
             window.addEventListener('keydown', (event) => {
-                if (event.key.toLowerCase() === 'g') {
-                    this.setTransformMode('translate');
+                if (this.selectedObject && !this.lockedObjects.has(this.selectedObject.name)) {
+                    switch(event.key.toLowerCase()) {
+                        case 'g':
+                            if (this.currentMode === 'translate') {
+                                this.disableTransformControls();
+                            } else {
+                                this.setTranslateMode();
+                                document.getElementById('translateMode').classList.add('active');
+                                document.getElementById('rotateMode').classList.remove('active');
+                            }
+                            break;
+                        case 'r':
+                            if (this.currentMode === 'rotate') {
+                                this.disableTransformControls();
+                            } else {
+                                this.setRotateMode();
+                                document.getElementById('translateMode').classList.remove('active');
+                                document.getElementById('rotateMode').classList.add('active');
+                            }
+                            break;
+                    }
                 }
             });
         
@@ -396,12 +443,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 snapToggle.addEventListener('change', (e) => {
                     if (e.target.checked) {
                         snapSettings.style.display = 'block';
-                        this.transformControls.setTranslationSnap(parseFloat(snapValue.value));
-                        this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15));
+                        this.translateControls.setTranslationSnap(parseFloat(snapValue.value));
+                        this.rotateControls.setRotationSnap(THREE.MathUtils.degToRad(15));
                     } else {
                         snapSettings.style.display = 'none';
-                        this.transformControls.setTranslationSnap(null);
-                        this.transformControls.setRotationSnap(null);
+                        this.translateControls.setTranslationSnap(null);
+                        this.rotateControls.setRotationSnap(null);
                     }
                 });
             }
@@ -411,14 +458,74 @@ document.addEventListener('DOMContentLoaded', () => {
                     const value = parseFloat(e.target.value);
                     snapValueDisplay.textContent = value.toFixed(2);
                     if (snapToggle.checked) {
-                        this.transformControls.setTranslationSnap(value);
+                        if (this.currentMode === 'translate') {
+                            this.translateControls.setTranslationSnap(value);
+                        } else if (this.currentMode === 'rotate') {
+                            this.rotateControls.setRotationSnap(THREE.MathUtils.degToRad(value));
+                        }
                     }
                 });
             }
         
+            // Additional controls
             document.getElementById('resetOrientation')?.addEventListener('click', () => this.resetObjectOrientation());
             document.getElementById('bringToFloor')?.addEventListener('click', () => this.bringObjectToFloor());
-        }        
+        }   
+        
+        disableTransformControls() {
+            // Hide all controls
+            if (this.translateControls) {
+                this.translateControls.detach();
+                this.translateControls.visible = false;
+            }
+            if (this.rotateControls) {
+                this.rotateControls.detach();
+                this.rotateControls.visible = false;
+            }
+        
+            // Remove active state from buttons
+            document.getElementById('translateMode')?.classList.remove('active');
+            document.getElementById('rotateMode')?.classList.remove('active');
+        
+            // Clear current mode
+            this.currentMode = null;
+        
+            console.log('Transform controls disabled');
+        }
+        
+        setTranslateMode() {
+            // If we're already in translate mode, do nothing
+            if (this.currentMode === 'translate') return;
+        
+            this.currentMode = 'translate';
+            if (this.selectedObject) {
+                // Hide rotate controls
+                this.rotateControls.visible = false;
+                this.rotateControls.detach();
+                
+                // Show translate controls
+                this.translateControls.visible = true;
+                this.translateControls.attach(this.selectedObject);
+            }
+            console.log('Switched to translate mode');
+        }
+        
+        setRotateMode() {
+            // If we're already in rotate mode, do nothing
+            if (this.currentMode === 'rotate') return;
+        
+            this.currentMode = 'rotate';
+            if (this.selectedObject) {
+                // Hide translate controls
+                this.translateControls.visible = false;
+                this.translateControls.detach();
+                
+                // Show rotate controls
+                this.rotateControls.visible = true;
+                this.rotateControls.attach(this.selectedObject);
+            }
+            console.log('Switched to rotate mode');
+        }
 
         setupEventListeners() {
             window.addEventListener('resize', () => this.onWindowResize(), false);
@@ -511,27 +618,35 @@ document.addEventListener('DOMContentLoaded', () => {
         
             // Add keyboard shortcuts
             window.addEventListener('keydown', (event) => {
-                switch(event.key.toLowerCase()) {
-                    case 'g':
-                        this.setTransformMode('translate');
-                        break;
-                    case 'r':
-                        this.setTransformMode('rotate');
-                        break;
-                    case 'escape':
-                        if (this.lockPopup) {
-                            this.scene.remove(this.lockPopup);
-                            this.lockPopup = null;
-                        }
-                        this.deselectObject();
-                        break;
-                }
-            });
-        
-            // Handle popup visibility when camera moves
-            this.orbitControls.addEventListener('change', () => {
-                if (this.lockPopup) {
-                    this.updatePopupRotation();
+                if (this.selectedObject && !this.lockedObjects.has(this.selectedObject.name)) {
+                    switch(event.key.toLowerCase()) {
+                        case 'g':
+                            if (this.currentMode === 'translate') {
+                                this.disableTransformControls();
+                            } else {
+                                this.setTranslateMode();
+                                document.getElementById('translateMode').classList.add('active');
+                                document.getElementById('rotateMode').classList.remove('active');
+                            }
+                            break;
+                        case 'r':
+                            if (this.currentMode === 'rotate') {
+                                this.disableTransformControls();
+                            } else {
+                                this.setRotateMode();
+                                document.getElementById('translateMode').classList.remove('active');
+                                document.getElementById('rotateMode').classList.add('active');
+                            }
+                            break;
+                        case 'escape':
+                            if (this.lockPopup) {
+                                this.scene.remove(this.lockPopup);
+                                this.lockPopup = null;
+                            }
+                            this.disableTransformControls();
+                            this.deselectObject();
+                            break;
+                    }
                 }
             });
         }
@@ -555,19 +670,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.translateControls.detach();
                 this.rotateControls.detach();
         
-                // By default, start with translate mode
-                this.currentMode = this.currentMode || 'translate';
-        
+                // Only attach controls if we're in a mode
                 if (this.currentMode === 'translate') {
-                    // Show only translation controls
                     this.translateControls.visible = true;
                     this.rotateControls.visible = false;
                     this.translateControls.attach(object);
-                } else {
-                    // Show only rotation controls
+                    document.getElementById('translateMode')?.classList.add('active');
+                    document.getElementById('rotateMode')?.classList.remove('active');
+                } else if (this.currentMode === 'rotate') {
                     this.translateControls.visible = false;
                     this.rotateControls.visible = true;
                     this.rotateControls.attach(object);
+                    document.getElementById('translateMode')?.classList.remove('active');
+                    document.getElementById('rotateMode')?.classList.add('active');
+                } else {
+                    // No mode selected, keep both controls hidden
+                    this.translateControls.visible = false;
+                    this.rotateControls.visible = false;
+                    document.getElementById('translateMode')?.classList.remove('active');
+                    document.getElementById('rotateMode')?.classList.remove('active');
                 }
         
                 // Configure controls visibility and properties
@@ -590,16 +711,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Make sure orbit controls are enabled initially
                 this.orbitControls.enabled = true;
         
-                console.log(`Controls attached in ${this.currentMode} mode`);
+                console.log(`Controls attached in ${this.currentMode || 'no'} mode`);
         
                 // Add key listeners for switching modes
                 if (!this.modeListenersAdded) {
                     window.addEventListener('keydown', (event) => {
                         if (this.selectedObject && !this.lockedObjects.has(this.selectedObject.name)) {
                             if (event.key.toLowerCase() === 'g') {
-                                this.setTranslateMode();
+                                if (this.currentMode === 'translate') {
+                                    this.disableTransformControls();
+                                } else {
+                                    this.setTranslateMode();
+                                }
                             } else if (event.key.toLowerCase() === 'r') {
-                                this.setRotateMode();
+                                if (this.currentMode === 'rotate') {
+                                    this.disableTransformControls();
+                                } else {
+                                    this.setRotateMode();
+                                }
                             }
                         }
                     });
@@ -632,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             console.log('Object selection complete:', object.name);
         }
+        
         
         // Add these helper methods to your class
         setTranslateMode() {
