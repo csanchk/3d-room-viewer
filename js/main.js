@@ -531,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             this.renderer.domElement.addEventListener('click', (event) => {
                 console.log('Click event triggered');
-                if (this.transformControls.dragging) return;
+                if (this.translateControls?.dragging || this.rotateControls?.dragging) return;
                 
                 const raycaster = new THREE.Raycaster();
                 const mouse = new THREE.Vector2();
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
                 // First, check if we clicked on the lock popup
                 if (this.lockPopup) {
-                    const popupIntersects = raycaster.intersectObject(this.lockPopup, true); // Added 'true' for recursive check
+                    const popupIntersects = raycaster.intersectObject(this.lockPopup, true);
                     if (popupIntersects.length > 0) {
                         console.log('Lock popup clicked');
                         this.toggleLock();
@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const clickPosition = intersects[0].point;
                         this.showLockPopup(rootObject, this.lockedObjects.has(rootObject.name));
                         this.lockPopup.position.copy(clickPosition);
-                        this.lockPopup.position.y += 0.5; // More offset for larger popup
+                        this.lockPopup.position.y += 0.5;
                         
                         // Update popup rotation immediately
                         this.updatePopupRotation();
@@ -610,9 +610,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.scene.remove(this.lockPopup);
                             this.lockPopup = null;
                         }
+                        this.disableTransformControls();
                         this.deselectObject();
                     }
                 }
+            });
+        
+            // Prevent context menu from showing up on right-click
+            this.renderer.domElement.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
             });
         
             // Add keyboard shortcuts
@@ -648,8 +654,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
+        
+            // Handle popup visibility when camera moves
+            this.orbitControls.addEventListener('change', () => {
+                if (this.lockPopup) {
+                    this.updatePopupRotation();
+                }
+            });
         }
-    
+
         selectObject(object) {
             console.log('Selecting object:', object.name);
             
@@ -710,9 +723,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Make sure orbit controls are enabled initially
                 this.orbitControls.enabled = true;
         
-                console.log(`Controls attached in ${this.currentMode || 'no'} mode`);
+                // Ensure proper control states
+                if (this.currentMode) {
+                    console.log(`Controls attached in ${this.currentMode} mode`);
+                    if (this.currentMode === 'translate') {
+                        this.translateControls.enabled = true;
+                        this.rotateControls.enabled = false;
+                    } else {
+                        this.translateControls.enabled = false;
+                        this.rotateControls.enabled = true;
+                    }
+                } else {
+                    console.log('No control mode active');
+                    this.translateControls.enabled = false;
+                    this.rotateControls.enabled = false;
+                }
         
-                // Add key listeners for switching modes
+                // Add key listeners for switching modes if not already added
                 if (!this.modeListenersAdded) {
                     window.addEventListener('keydown', (event) => {
                         if (this.selectedObject && !this.lockedObjects.has(this.selectedObject.name)) {
@@ -735,11 +762,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
         
             } else {
-                // If object is locked, detach all controls
+                // If object is locked, detach and hide all controls
                 this.translateControls.detach();
                 this.rotateControls.detach();
                 this.translateControls.visible = false;
                 this.rotateControls.visible = false;
+                this.translateControls.enabled = false;
+                this.rotateControls.enabled = false;
             }
             
             // Ensure object is within bounds
@@ -759,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.saveSceneState();
         
             console.log('Object selection complete:', object.name);
-        }
+        }        
         
         
         // Add these helper methods to your class
